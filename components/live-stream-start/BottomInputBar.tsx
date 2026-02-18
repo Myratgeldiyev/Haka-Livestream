@@ -1,6 +1,4 @@
-import { EmojiPickerOverlay, EmojiSvgaOverlay } from '@/components/emoji'
-import { isAnimatedEmoji } from '@/constants/emoji'
-import { getEmojiIdsFromText } from '@/utils/parseMessage'
+import { EmojiPickerOverlay } from '@/components/emoji'
 import React, { useCallback, useState } from 'react'
 import {
 	Dimensions,
@@ -39,25 +37,17 @@ export function BottomInputBar({
 }: BottomInputBarProps) {
 	const [text, setText] = useState('')
 	const [emojiVisible, setEmojiVisible] = useState(false)
-	const [svgaQueue, setSvgaQueue] = useState<string[]>([])
 
 	const handleSend = useCallback(() => {
 		const trimmed = text.trim()
 		if (!trimmed || !onSend) return
-		const ids = getEmojiIdsFromText(trimmed)
-		const svgaIds = ids.filter(isAnimatedEmoji)
-		if (svgaIds.length > 0) setSvgaQueue(svgaIds)
 		onSend(trimmed)
 		setText('')
 		setEmojiVisible(false)
 	}, [text, onSend])
 
-	const handleEmojiSelect = useCallback((placeholder: string) => {
-		setText(prev => prev + placeholder)
-	}, [])
-
-	const handleSvgaComplete = useCallback(() => {
-		setSvgaQueue([])
+	const handleEmojiSelect = useCallback((_placeholder: string) => {
+		// Preview-only: emoji selection does not modify input text.
 	}, [])
 
 	return (
@@ -112,7 +102,6 @@ export function BottomInputBar({
 				onEmojiSelect={handleEmojiSelect}
 				onClose={() => setEmojiVisible(false)}
 			/>
-			<EmojiSvgaOverlay queue={svgaQueue} onComplete={handleSvgaComplete} />
 		</View>
 	)
 }

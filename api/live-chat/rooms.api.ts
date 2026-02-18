@@ -24,7 +24,7 @@ import {
 
 export const roomsApi = {
 	createRoom: async (
-		payload: CreateRoomRequest
+		payload: CreateRoomRequest,
 	): Promise<CreateRoomResponse> => {
 		// #region agent log
 		fetch('http://127.0.0.1:7243/ingest/5dc12a94-a263-4786-a3a6-a66ee4516557', {
@@ -45,39 +45,45 @@ export const roomsApi = {
 		try {
 			const res = await apiClient.post(ENDPOINTS.ROOMS.CREATE_ROOM, payload)
 			// #region agent log
-			fetch('http://127.0.0.1:7243/ingest/5dc12a94-a263-4786-a3a6-a66ee4516557', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					location: 'rooms.api:createRoom:success',
-					message: 'createRoom API success',
-					data: { status: res.status, hasData: !!res.data },
-					timestamp: Date.now(),
-					hypothesisId: 'H1',
-				}),
-			}).catch(() => {})
+			fetch(
+				'http://127.0.0.1:7243/ingest/5dc12a94-a263-4786-a3a6-a66ee4516557',
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						location: 'rooms.api:createRoom:success',
+						message: 'createRoom API success',
+						data: { status: res.status, hasData: !!res.data },
+						timestamp: Date.now(),
+						hypothesisId: 'H1',
+					}),
+				},
+			).catch(() => {})
 			// #endregion
 			return res.data
 		} catch (error: any) {
 			// #region agent log
-			fetch('http://127.0.0.1:7243/ingest/5dc12a94-a263-4786-a3a6-a66ee4516557', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					location: 'rooms.api:createRoom:error',
-					message: 'createRoom API error',
-					data: {
-						status: error?.response?.status,
-						statusText: error?.response?.statusText,
-						errorData: error?.response?.data,
-						errorMessage: error?.message,
-						requestUrl: error?.config?.url,
-						requestMethod: error?.config?.method,
-					},
-					timestamp: Date.now(),
-					hypothesisId: 'H1',
-				}),
-			}).catch(() => {})
+			fetch(
+				'http://127.0.0.1:7243/ingest/5dc12a94-a263-4786-a3a6-a66ee4516557',
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						location: 'rooms.api:createRoom:error',
+						message: 'createRoom API error',
+						data: {
+							status: error?.response?.status,
+							statusText: error?.response?.statusText,
+							errorData: error?.response?.data,
+							errorMessage: error?.message,
+							requestUrl: error?.config?.url,
+							requestMethod: error?.config?.method,
+						},
+						timestamp: Date.now(),
+						hypothesisId: 'H1',
+					}),
+				},
+			).catch(() => {})
 			// #endregion
 			throw error
 		}
@@ -85,7 +91,7 @@ export const roomsApi = {
 
 	getRooms: async (
 		limit?: number,
-		offset?: number
+		offset?: number,
 	): Promise<RoomResponse[]> => {
 		const params =
 			limit != null && offset != null ? { limit, offset } : undefined
@@ -96,36 +102,36 @@ export const roomsApi = {
 	},
 	getRoomDetail: async (roomId: string): Promise<RoomResponse> => {
 		const { data } = await apiClient.get(
-			`${ENDPOINTS.ROOMS.CREATE_ROOM}${roomId}/`
+			`${ENDPOINTS.ROOMS.CREATE_ROOM}${roomId}/`,
 		)
 		return data
 	},
 	getAllUsersInChatRoom: async (roomId: string): Promise<RoomUsers[]> => {
 		const { data } = await apiClient.get(
-			`${ENDPOINTS.ROOMS.CREATE_ROOM}${roomId}/room_users/`
+			`${ENDPOINTS.ROOMS.CREATE_ROOM}${roomId}/room_users/`,
 		)
 		return data
 	},
 	enterRoom: async (roomId: string): Promise<EnterRoomResponse> => {
 		const res = await apiClient.post(
-			`${ENDPOINTS.ROOMS.CREATE_ROOM}${roomId}/enter_room/`
+			`${ENDPOINTS.ROOMS.CREATE_ROOM}${roomId}/enter_room/`,
 		)
 		return res.data
 	},
 	updateRoom: async (
 		roomId: string,
-		payload: UpdateRoomRequest
+		payload: UpdateRoomRequest,
 	): Promise<RoomResponse> => {
 		const { data } = await apiClient.put(
 			`${ENDPOINTS.ROOMS.CREATE_ROOM}${roomId}/`,
-			payload
+			payload,
 		)
 		return data
 	},
 
 	uploadRoomImage: async (
 		roomId: string,
-		payload: UploadRoomImagePayload
+		payload: UploadRoomImagePayload,
 	): Promise<RoomResponse> => {
 		const formData = new FormData()
 
@@ -142,7 +148,7 @@ export const roomsApi = {
 				headers: {
 					'Content-Type': 'multipart/form-data',
 				},
-			}
+			},
 		)
 
 		return data
@@ -150,13 +156,13 @@ export const roomsApi = {
 
 	requestSpeakerRole: async (roomId: string): Promise<RoomResponse> => {
 		const res = await apiClient.post(
-			`${ENDPOINTS.ROOMS.CREATE_ROOM}${roomId}/request_speaker_role/`
+			`${ENDPOINTS.ROOMS.CREATE_ROOM}${roomId}/request_speaker_role/`,
 		)
 		return res.data
 	},
 	unmuteMyself: async (roomId: string): Promise<void> => {
 		await apiClient.post(
-			`${ENDPOINTS.ROOMS.CREATE_ROOM}${roomId}/unmute_myself/`
+			`${ENDPOINTS.ROOMS.CREATE_ROOM}${roomId}/unmute_myself/`,
 		)
 	},
 	muteMyself: async (roomId: string): Promise<void> => {
@@ -167,21 +173,21 @@ export const roomsApi = {
 	},
 	addUserAsAdmin: async (
 		roomId: string,
-		payload: AddUserAsAdminRequest
+		payload: AddUserAsAdminRequest,
 	): Promise<AddUserAsAdminResponse> => {
 		const res = await apiClient.post(
 			ENDPOINTS.ROOMS.ADD_USER_AS_ADMIN(roomId),
-			payload
+			payload,
 		)
 		return res.data
 	},
 	sendMessage: async (
 		roomId: string,
-		payload: SendMessageRequest
+		payload: SendMessageRequest,
 	): Promise<SendMessageResponse> => {
 		const res = await apiClient.post(
 			ENDPOINTS.ROOMS.SEND_MESSAGE(roomId),
-			payload
+			payload,
 		)
 		return res.data
 	},
@@ -192,21 +198,21 @@ export const roomsApi = {
 	},
 	removeUser: async (
 		roomId: string,
-		payload: RemoveAdminRequest
+		payload: RemoveAdminRequest,
 	): Promise<RemoveUserResponse> => {
 		const res = await apiClient.post(
 			ENDPOINTS.ROOMS.REMOVE_ADMIN(roomId),
-			payload
+			payload,
 		)
 		return res.data
 	},
 	kickOutUser: async (
 		roomId: string,
-		payload: KickOutRequest
+		payload: KickOutRequest,
 	): Promise<KickOutResponse> => {
 		const res = await apiClient.post(
 			ENDPOINTS.ROOMS.KICK_OUT_USER(roomId),
-			payload
+			payload,
 		)
 		return res.data
 	},
@@ -224,21 +230,21 @@ export const roomsApi = {
 
 	muteUser: async (
 		roomId: string,
-		payload: MuteUnmuteUserRequest
+		payload: MuteUnmuteUserRequest,
 	): Promise<void> => {
 		await apiClient.post(
 			`${ENDPOINTS.ROOMS.CREATE_ROOM}${roomId}/mute_user/`,
-			payload
+			payload,
 		)
 	},
 
 	unmuteUser: async (
 		roomId: string,
-		payload: MuteUnmuteUserRequest
+		payload: MuteUnmuteUserRequest,
 	): Promise<void> => {
 		await apiClient.post(
 			`${ENDPOINTS.ROOMS.CREATE_ROOM}${roomId}/unmute_user/`,
-			payload
+			payload,
 		)
 	},
 }

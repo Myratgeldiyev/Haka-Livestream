@@ -606,6 +606,11 @@ export default function LiveRoomScreen() {
 										/>
 										<TopRightControls
 											roomId={isStreamMode ? '' : (roomId ?? '')}
+											viewerCount={
+												streamDetails?.display_id ??
+												liveStream?.display_id ??
+												0
+											}
 											onClose={handleClose}
 										/>
 									</View>
@@ -752,6 +757,11 @@ export default function LiveRoomScreen() {
 								/>
 								<TopRightControls
 									roomId={isStreamMode ? '' : (roomId ?? '')}
+									viewerCount={
+										streamDetails?.display_id ??
+										liveStream?.display_id ??
+										0
+									}
 									onClose={handleClose}
 								/>
 							</View>

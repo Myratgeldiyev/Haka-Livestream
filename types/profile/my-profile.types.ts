@@ -6,6 +6,7 @@ export interface MyProfileResponse {
 	follow: number
 	friends: number
 	visitors: number
+	level: number
 	top_up: number
 	withdraw: number
 }

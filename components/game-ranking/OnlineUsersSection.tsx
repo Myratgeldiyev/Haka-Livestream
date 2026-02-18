@@ -11,7 +11,9 @@ interface P {
 export function OnlineUsersSection({ data }: P) {
 	return (
 		<View style={styles.container}>
-			<Text style={styles.onlineCountText}>Online User: 0</Text>
+			<Text style={styles.onlineCountText}>
+				Online User: {data?.length ?? 0}
+			</Text>
 			<ScrollView
 				style={styles.scrollView}
 				showsVerticalScrollIndicator={false}

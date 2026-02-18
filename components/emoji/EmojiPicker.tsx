@@ -18,10 +18,11 @@ const CATEGORIES: { key: EmojiCategory; label: string }[] = [
 ]
 
 export interface EmojiPickerProps {
-	onEmojiSelect: (placeholder: string) => void
+	onEmojiSelect?: (placeholder: string) => void
+	onEmojiPress?: (id: string) => void
 }
 
-export function EmojiPicker({ onEmojiSelect }: EmojiPickerProps) {
+export function EmojiPicker({ onEmojiSelect, onEmojiPress }: EmojiPickerProps) {
 	const [category, setCategory] = useState<EmojiCategory>('NORMAL')
 
 	const filteredConfig = useMemo(
@@ -34,9 +35,15 @@ export function EmojiPicker({ onEmojiSelect }: EmojiPickerProps) {
 
 	const handlePress = useCallback(
 		(id: string) => {
-			onEmojiSelect(toEmojiPlaceholder(id))
+			if (onEmojiPress) {
+				onEmojiPress(id)
+				return
+			}
+			if (onEmojiSelect) {
+				onEmojiSelect(toEmojiPlaceholder(id))
+			}
 		},
-		[onEmojiSelect]
+		[onEmojiPress, onEmojiSelect]
 	)
 
 	return (
@@ -80,17 +87,8 @@ interface EmojiCellProps {
 
 function EmojiCell({ item, onPress }: EmojiCellProps) {
 	const displaySource = getEmojiDisplaySource(item.id)
-	const isSvga = item.type === 'svga'
 
 	const handlePress = () => onPress(item.id)
-
-	const svgaFallbackView = (
-		<View style={styles.svgaFallback}>
-			<Text style={styles.svgaFallbackText} numberOfLines={1}>
-				{item.id}
-			</Text>
-		</View>
-	)
 
 	return (
 		<Pressable style={styles.emojiCell} onPress={handlePress} hitSlop={4}>
@@ -100,11 +98,9 @@ function EmojiCell({ item, onPress }: EmojiCellProps) {
 					style={styles.emojiImage}
 					contentFit='contain'
 				/>
-			) : isSvga ? (
-				svgaFallbackView
 			) : (
-				<View style={styles.svgaFallback}>
-					<Text style={styles.svgaFallbackText}>?</Text>
+				<View style={styles.fallback}>
+					<Text style={styles.fallbackText}>?</Text>
 				</View>
 			)}
 		</Pressable>
@@ -149,17 +145,7 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 	},
 	emojiImage: { width: EMOJI_SIZE - 4, height: EMOJI_SIZE - 4 },
-	svgaWrap: {
-		width: EMOJI_SIZE - 4,
-		height: EMOJI_SIZE - 4,
-		borderRadius: 8,
-		overflow: 'hidden',
-	},
-	svgaThumb: {
-		width: EMOJI_SIZE - 4,
-		height: EMOJI_SIZE - 4,
-	},
-	svgaFallback: {
+	fallback: {
 		width: EMOJI_SIZE - 4,
 		height: EMOJI_SIZE - 4,
 		alignItems: 'center',
@@ -168,7 +154,7 @@ const styles = StyleSheet.create({
 		borderRadius: 8,
 		padding: 2,
 	},
-	svgaFallbackText: {
+	fallbackText: {
 		fontSize: 9,
 		color: 'rgba(255,255,255,0.7)',
 	},

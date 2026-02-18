@@ -11,7 +11,7 @@ interface TopRightControlsProps {
 }
 
 export function TopRightControls({
-	viewerCount = 1,
+	viewerCount = 0,
 	onClose,
 	roomId,
 }: TopRightControlsProps) {
@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
 	viewerCount: {
 		fontSize: 14,
 		fontWeight: '600',
-		color: '#FFFFFF',
+		color: '#333333',
 	},
 	closeButton: {
 		width: 28,

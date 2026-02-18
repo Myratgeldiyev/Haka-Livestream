@@ -13,20 +13,20 @@ export interface UpdateProfilePictureParams {
 export const profileApi = {
 	getMyProfile: async (): Promise<MyProfileResponse> => {
 		const response = await apiClient.get<MyProfileResponse>(
-			ENDPOINTS.PROFILE.MY_PROFILE
+			ENDPOINTS.PROFILE.MY_PROFILE,
 		)
 		return response.data
 	},
 
 	getUserProfile: async (userId: string): Promise<MyProfileResponse> => {
 		const response = await apiClient.get<MyProfileResponse>(
-			ENDPOINTS.PROFILE.GET_USER_PROFILE(userId)
+			ENDPOINTS.PROFILE.GET_USER_PROFILE(userId),
 		)
 		return response.data
 	},
 
 	updateProfilePicture: async (
-		image: UpdateProfilePictureParams
+		image: UpdateProfilePictureParams,
 	): Promise<MyProfileResponse> => {
 		const formData = new FormData()
 		formData.append('profile_picture', {
@@ -42,7 +42,7 @@ export const profileApi = {
 				headers: {
 					'Content-Type': 'multipart/form-data',
 				},
-			}
+			},
 		)
 		return response.data
 	},
@@ -59,7 +59,7 @@ export const followApi = {
 export const followingApi = {
 	getFollowing: async (): Promise<FollowingResponse> => {
 		const response = await apiClient.get<FollowingResponse>(
-			ENDPOINTS.FOLLOWING.LIST
+			ENDPOINTS.FOLLOWING.LIST,
 		)
 		return response.data
 	},
@@ -67,7 +67,7 @@ export const followingApi = {
 export const followersApi = {
 	getFollowers: async (): Promise<FollowersResponse> => {
 		const response = await apiClient.get<FollowersResponse>(
-			ENDPOINTS.FOLLOWERS.LIST
+			ENDPOINTS.FOLLOWERS.LIST,
 		)
 		return response.data
 	},
@@ -76,7 +76,7 @@ export const followersApi = {
 export const friendsApi = {
 	getFriends: async (): Promise<FriendsResponse> => {
 		const response = await apiClient.get<FriendsResponse>(
-			ENDPOINTS.FRIENDS.LIST
+			ENDPOINTS.FRIENDS.LIST,
 		)
 		return response.data
 	},
@@ -84,7 +84,7 @@ export const friendsApi = {
 export const visitorsApi = {
 	getVisitors: async (): Promise<FriendsResponse> => {
 		const response = await apiClient.get<FriendsResponse>(
-			ENDPOINTS.VISITORS.LIST
+			ENDPOINTS.VISITORS.LIST,
 		)
 		return response.data
 	},

@@ -1,10 +1,10 @@
+import { useUserRelationsStore } from '@/store/user.store'
 import type {
 	ChatActionOverlayProps,
 	ChatActionViewType,
 	KickOutReason,
 } from '@/types/chat-actions/chat-action.types'
-import { useUserRelationsStore } from '@/store/user.store'
-import React, { useMemo, useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
 	BackHandler,
 	Modal,
@@ -31,6 +31,7 @@ export function ChatActionOverlay({
 	onKickOut,
 	onViewProfile,
 	onMention,
+	level,
 }: ChatActionOverlayProps) {
 	const [modalVisible, setModalVisible] = useState(false)
 	const [currentView, setCurrentView] = useState<ChatActionViewType>('main')
@@ -41,9 +42,7 @@ export function ChatActionOverlay({
 	const unfollowUser = useUserRelationsStore(s => s.unfollowUser)
 
 	const isFollowed = useMemo(
-		() =>
-			!!user &&
-			followingAll.some(f => String(f.user_id) === user.id),
+		() => !!user && followingAll.some(f => String(f.user_id) === user.id),
 		[user, followingAll],
 	)
 
@@ -150,14 +149,14 @@ export function ChatActionOverlay({
 		<Modal
 			visible={modalVisible}
 			transparent
-			animationType="none"
+			animationType='none'
 			statusBarTranslucent
 			onRequestClose={handleClose}
 		>
 			<View style={sharedChatActionStyles.modalContainer}>
 				<StatusBar
 					backgroundColor={COLORS.background}
-					barStyle="light-content"
+					barStyle='light-content'
 					translucent
 				/>
 
@@ -177,6 +176,7 @@ export function ChatActionOverlay({
 						{currentView === 'main' ? (
 							<ChatActionContent
 								user={user}
+								level={level}
 								onKickOutPress={handleKickOutPress}
 								onFollow={handleFollow}
 								onUnfollow={handleUnfollow}

@@ -1,3 +1,4 @@
+import { ChatActionOverlay } from '@/components/chat-actions'
 import {
 	AnnouncementBox,
 	ChatList,
@@ -17,6 +18,7 @@ import { fontSizes, fontWeights } from '@/constants/typography'
 import { useMyProfile } from '@/hooks/profile/useMyProfile'
 import { useAuthStore } from '@/store/auth.store'
 import { useLiveChatStore } from '@/store/liveChat.store'
+import type { ChatUser } from '@/types/chat-actions/chat-action.types'
 import { TopRightControls, TopUserInfo } from '@/types/game-ranking-types'
 import { useFocusEffect } from '@react-navigation/native'
 import { router, useLocalSearchParams, useNavigation } from 'expo-router'
@@ -80,6 +82,9 @@ export default function ChatRoomScreen() {
 		uri: string
 	}>({ name: 'Music', uri: '' })
 	const [seats, setSeats] = useState<SeatsState>(() => buildEmptySeats(10))
+	const [selectedSeatUser, setSelectedSeatUser] = useState<ChatUser | null>(
+		null,
+	)
 
 	const roomId = Array.isArray(rawRoomId) ? rawRoomId[0] : rawRoomId
 	const navigation = useNavigation()
@@ -395,6 +400,14 @@ export default function ChatRoomScreen() {
 		}))
 	}
 
+	const handleOccupiedSeatPress = useCallback((seatUser: SeatUser) => {
+		setSelectedSeatUser({
+			id: seatUser.id,
+			name: seatUser.username,
+			avatarUri: seatUser.avatar || undefined,
+		})
+	}, [])
+
 	const handleTakeFirstAvailableSeat = () => {
 		for (let n = 1; n <= roomSeatCount; n++) {
 			const seat = seats[n]
@@ -502,7 +515,11 @@ export default function ChatRoomScreen() {
 							data={activeRoom}
 							onEditPress={() => setEditVisible(true)}
 						/>
-						<TopRightControls roomId={roomId} onClose={handleClose} />
+						<TopRightControls
+							roomId={roomId}
+							viewerCount={users.length}
+							onClose={handleClose}
+						/>
 					</View>
 				</SafeAreaView>
 
@@ -519,8 +536,15 @@ export default function ChatRoomScreen() {
 						onTurnOff={handleTurnOff}
 						onMuteUser={handleMuteUser}
 						onUnmuteUser={handleUnmuteUser}
+						onOccupiedSeatPress={handleOccupiedSeatPress}
 					/>
 				</View>
+
+				<ChatActionOverlay
+					visible={selectedSeatUser !== null}
+					onClose={() => setSelectedSeatUser(null)}
+					user={selectedSeatUser}
+				/>
 
 				<InviteMicSheet
 					visible={inviteSheetSeatNumber !== null}

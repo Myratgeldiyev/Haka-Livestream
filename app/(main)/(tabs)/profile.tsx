@@ -64,6 +64,7 @@ export default function ProfileScreen() {
 					name={displayName}
 					id={displayId}
 					isNew={false}
+					level={data?.level}
 				/>
 
 				<ProfileStats

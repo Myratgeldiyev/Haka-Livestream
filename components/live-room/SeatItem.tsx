@@ -45,6 +45,7 @@ interface SeatItemProps {
 	onTurnOff?: (seatNumber: number) => void
 	onMuteUser?: (userId: string) => void
 	onUnmuteUser?: (userId: string) => void
+	onOccupiedSeatPress?: (user: SeatUser) => void
 }
 
 type Position = {
@@ -70,6 +71,7 @@ export function SeatItem({
 	onTurnOff,
 	onMuteUser,
 	onUnmuteUser,
+	onOccupiedSeatPress,
 }: SeatItemProps) {
 	const insets = useSafeAreaInsets()
 	const wrapperRef = useRef<View>(null)
@@ -116,6 +118,10 @@ export function SeatItem({
 			return
 		}
 		if (isLocked && !isOwnerOrAdmin) {
+			return
+		}
+		if (isOccupied && onOccupiedSeatPress && seat?.user) {
+			onOccupiedSeatPress(seat.user)
 			return
 		}
 		if (isOpen) {

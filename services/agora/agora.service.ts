@@ -102,6 +102,8 @@ export const joinChannelWithVideo = async (
 	}
 }
 
+export const joinChannel = joinChannelWithVideo
+
 // ─── Viewer: join as audience ─────────────────────────────────────────────────
 
 /**

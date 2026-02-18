@@ -1,9 +1,7 @@
-import { EmojiPickerOverlay, EmojiSvgaOverlay } from '@/components/emoji'
+import { EmojiPickerOverlay } from '@/components/emoji'
 import { MessageInboxSheet } from '@/components/message/inbox-sheet/MessageInboxSheet'
-import { isAnimatedEmoji } from '@/constants/emoji'
 import { spacing } from '@/constants/spacing'
 import { fontSizes, lineHeights } from '@/constants/typography'
-import { getEmojiIdsFromText } from '@/utils/parseMessage'
 import React, { useCallback, useMemo, useState } from 'react'
 import {
 	Dimensions,
@@ -79,7 +77,6 @@ export function RoomBottomBar({
 	const [roomPlayVisible, setRoomPlayVisible] = useState(false)
 	const [giftOverlayVisible, setGiftOverlayVisible] = useState(false)
 	const [messageInboxVisible, setMessageInboxVisible] = useState(false)
-	const [svgaQueue, setSvgaQueue] = useState<string[]>([])
 
 	const handleRoomPlayOpen = () => setRoomPlayVisible(true)
 	const handleRoomPlayClose = () => setRoomPlayVisible(false)
@@ -89,20 +86,13 @@ export function RoomBottomBar({
 	const handleSend = useCallback(() => {
 		const trimmed = text.trim()
 		if (!trimmed || !onSend) return
-		const ids = getEmojiIdsFromText(trimmed)
-		const svgaIds = ids.filter(isAnimatedEmoji)
-		if (svgaIds.length > 0) setSvgaQueue(svgaIds)
 		onSend(trimmed)
 		setText('')
 		setEmojiVisible(false)
 	}, [text, onSend])
 
-	const handleEmojiSelect = useCallback((placeholder: string) => {
-		setText(prev => prev + placeholder)
-	}, [])
-
-	const handleSvgaComplete = useCallback(() => {
-		setSvgaQueue([])
+	const handleEmojiSelect = useCallback((_placeholder: string) => {
+		// Preview-only: emoji selection does not modify input text.
 	}, [])
 
 	const dynamicStyles = useMemo(
@@ -225,7 +215,6 @@ export function RoomBottomBar({
 				onEmojiSelect={handleEmojiSelect}
 				onClose={() => setEmojiVisible(false)}
 			/>
-			<EmojiSvgaOverlay queue={svgaQueue} onComplete={handleSvgaComplete} />
 		</View>
 	)
 }

@@ -1,8 +1,4 @@
-import {
-	getEmojiDisplaySource,
-	getEmojiConfig,
-	isAnimatedEmoji,
-} from '@/constants/emoji'
+import { getEmojiDisplaySource } from '@/constants/emoji'
 import type { MessageSegment } from '@/utils/parseMessage'
 import { Image } from 'expo-image'
 import React from 'react'
@@ -19,8 +15,8 @@ export interface EmojiRendererProps {
 }
 
 /**
- * Renders one message segment: text → Text, static emoji → Image (webp/png),
- * SVGA emoji → poster Image when posterSource set, else minimal id fallback (no placeholder).
+ * Renders one message segment: text → Text, emoji → Image (webp/png/animated webp).
+ * expo-image handles animated WebP automatically; no special handling here.
  */
 export function EmojiRenderer({
 	segment,
@@ -48,33 +44,6 @@ export function EmojiRenderer({
 				style={{ width: emojiSize, height: emojiSize }}
 				contentFit='contain'
 			/>
-		)
-	}
-
-	if (isAnimatedEmoji(id)) {
-		const config = getEmojiConfig(id)
-		return (
-			<View
-				key={index}
-				style={[
-					{
-						width: emojiSize,
-						height: emojiSize,
-						justifyContent: 'center',
-						alignItems: 'center',
-						backgroundColor: 'rgba(255,255,255,0.08)',
-						borderRadius: 4,
-					},
-					containerStyle,
-				]}
-			>
-				<Text
-					style={[textStyle, { fontSize: emojiSize * 0.45 }]}
-					numberOfLines={1}
-				>
-					{config?.id ?? id}
-				</Text>
-			</View>
 		)
 	}
 

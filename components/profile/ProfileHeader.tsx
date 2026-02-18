@@ -1,4 +1,5 @@
 import { Avatar } from '@/components/ui/Avatar'
+import { LevelBadge } from '@/components/ui/LevelBadge'
 import { profileColors } from '@/constants/colors'
 import { spacing } from '@/constants/spacing'
 import { fontSizes, fontWeights, lineHeights } from '@/constants/typography'
@@ -6,16 +7,14 @@ import { router } from 'expo-router'
 import React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import CopyIcon from '../ui/icons/profile-header/copy-icon'
-import GrassFill from '../ui/icons/profile-header/grassFill'
-import MaleFill from '../ui/icons/profile-header/maleFill'
 import RightArrowIcon from '../ui/icons/profile-header/right-arrow'
-import VectorFill from '../ui/icons/profile-header/vectorFill'
 
 interface ProfileHeaderProps {
 	name: string
 	id: string
 	isNew?: boolean
 	src?: string
+	level?: number
 }
 
 export function ProfileHeader({
@@ -23,6 +22,7 @@ export function ProfileHeader({
 	id,
 	isNew = false,
 	src,
+	level,
 }: ProfileHeaderProps) {
 	return (
 		<View style={styles.container}>
@@ -33,11 +33,7 @@ export function ProfileHeader({
 			<View style={styles.textContainer}>
 				<Text style={styles.name}>{name}</Text>
 
-				<View style={styles.infoContainer}>
-					<MaleFill />
-					<GrassFill />
-					<VectorFill />
-				</View>
+				{level != null && <LevelBadge level={level} />}
 
 				<View style={styles.idContainer}>
 					<Text style={styles.id}>ID: {id}</Text>
@@ -82,11 +78,6 @@ const styles = StyleSheet.create({
 		lineHeight: lineHeights.lg,
 		fontWeight: fontWeights.bold,
 		color: profileColors.text.primary,
-	},
-
-	infoContainer: {
-		flexDirection: 'row',
-		gap: spacing.xs,
 	},
 
 	idContainer: {

@@ -1,4 +1,6 @@
 import type { ChatMessage as ChatMessageType } from '@/api/live-chat/room.types'
+import { profileApi } from '@/api/profile/profile.api'
+import { useUserProfile } from '@/hooks/profile/useUserProfile'
 import type { ChatUser } from '@/types/chat-actions/chat-action.types'
 import React, { useEffect, useRef, useState } from 'react'
 import {
@@ -32,7 +34,7 @@ interface ChatListProps {
 }
 
 function isChatMessage(
-	msg: ChatMessageType | ChatMessageItem
+	msg: ChatMessageType | ChatMessageItem,
 ): msg is ChatMessageType {
 	return 'user' in msg || 'text' in msg
 }
@@ -48,7 +50,7 @@ function ChatRow({
 		? item.user?.profile_picture
 			? { uri: item.user.profile_picture }
 			: DEFAULT_AVATAR
-		: item.avatar ?? DEFAULT_AVATAR
+		: (item.avatar ?? DEFAULT_AVATAR)
 
 	const username = isChatMessage(item)
 		? item.user?.username || `User ${item.user?.user_id ?? 'Unknown'}`
@@ -84,7 +86,7 @@ function ChatRow({
 export function ChatList({ messages, statusText }: ChatListProps) {
 	const [selectedUser, setSelectedUser] = useState<ChatUser | null>(null)
 	const flatListRef = useRef<FlatList>(null)
-
+	const { data, isLoading, error } = useUserProfile(selectedUser?.id ?? null)
 	useEffect(() => {
 		if (messages.length > 0) {
 			setTimeout(() => {
@@ -93,25 +95,55 @@ export function ChatList({ messages, statusText }: ChatListProps) {
 		}
 	}, [messages.length])
 
-	const handleRowPress = (item: ChatMessageType | ChatMessageItem) => {
-		let user: ChatUser
-
+	const handleRowPress = async (item: ChatMessageType | ChatMessageItem) => {
 		if (isChatMessage(item)) {
-			user = {
-				id: item.id,
-				name: item.user?.username || `User ${item.user?.user_id ?? 'Unknown'}`,
-				avatarSource: item.user?.profile_picture
-					? { uri: item.user.profile_picture }
-					: DEFAULT_AVATAR,
+			const userId = item.user?.user_id?.toString() ?? null
+			if (userId) {
+				try {
+					const profile = await profileApi.getUserProfile(userId)
+					const user: ChatUser = {
+						id: profile.user_id.toString(),
+						name: profile.username ?? 'User',
+						avatarSource: profile.profile_picture
+							? { uri: profile.profile_picture }
+							: DEFAULT_AVATAR,
+						level: profile.level,
+						followersCount: profile.followers,
+						followingCount: profile.follow,
+						friendsCount: profile.friends,
+						visitorsCount: profile.visitors,
+					}
+					setSelectedUser(user)
+				} catch {
+					const user: ChatUser = {
+						id: userId,
+						name:
+							item.user?.username || `User ${item.user?.user_id ?? 'Unknown'}`,
+						avatarSource: item.user?.profile_picture
+							? { uri: item.user.profile_picture }
+							: DEFAULT_AVATAR,
+					}
+					setSelectedUser(user)
+				}
+			} else {
+				const user: ChatUser = {
+					id: item.id,
+					name:
+						item.user?.username || `User ${item.user?.user_id ?? 'Unknown'}`,
+					avatarSource: item.user?.profile_picture
+						? { uri: item.user.profile_picture }
+						: DEFAULT_AVATAR,
+				}
+				setSelectedUser(user)
 			}
 		} else {
-			user = {
+			const user: ChatUser = {
 				id: item.id,
 				name: item.username,
 				avatarSource: item.avatar ?? DEFAULT_AVATAR,
 			}
+			setSelectedUser(user)
 		}
-		setSelectedUser(user)
 	}
 
 	const handleClose = () => {
@@ -143,6 +175,7 @@ export function ChatList({ messages, statusText }: ChatListProps) {
 				visible={selectedUser !== null}
 				onClose={handleClose}
 				user={selectedUser}
+				level={data?.level}
 			/>
 		</View>
 	)

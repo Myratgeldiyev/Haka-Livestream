@@ -14,7 +14,7 @@ export const ENDPOINTS = {
 	PROFILE: {
 		MY_PROFILE: 'users/myprofile/',
 		UPDATE_PROFILE_PICTURE: 'users/update/profile-picture/',
-		GET_USER_PROFILE: (userId: string) => `users/profile/${userId}/`,
+		GET_USER_PROFILE: (userId: string) => `users/${userId}/`,
 	},
 	FOLLOW: {
 		FOLLOW: 'follow/',
@@ -70,12 +70,9 @@ export const ENDPOINTS = {
 		TOGGLE_VIDEO: (id: string) => `video/streams/${id}/toggle_video/`,
 		UNMUTE_MYSELF: (id: string) => `video/streams/${id}/unmute_myself/`,
 		UNMUTE_USER: (id: string) => `video/streams/${id}/unmute_user/`,
-		UPLOAD_ROOM_IMAGE: (id: string) =>
-			`video/streams/${id}/upload_room_image/`,
-		GET_MESSAGES: (streamId: string) =>
-			`video/streams/${streamId}/messages/`,
-		SEND_MESSAGE: (streamId: string) =>
-			`video/streams/${streamId}/messages/`,
+		UPLOAD_ROOM_IMAGE: (id: string) => `video/streams/${id}/upload_room_image/`,
+		GET_MESSAGES: (streamId: string) => `video/streams/${streamId}/messages/`,
+		SEND_MESSAGE: (streamId: string) => `video/streams/${streamId}/messages/`,
 	},
 	STREAM_BATTLES: {
 		BASE: 'video/stream-battles/',

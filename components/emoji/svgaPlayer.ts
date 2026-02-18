@@ -1,3 +1,4 @@
+// DEPRECATED: Replaced by Lottie (EmojiLottieOverlay + getLottieSource). Do not use for new code.
 import { Image } from 'react-native'
 import type { ImageSourcePropType } from 'react-native'
 import { getEmojiConfig } from '@/constants/emoji'

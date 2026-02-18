@@ -1,3 +1,4 @@
+// DEPRECATED: Replaced by EmojiLottieOverlay (lottie-react-native). Do not use for new code.
 import { getEmojiConfig, isAnimatedEmoji } from '@/constants/emoji'
 import { getSvgaUri } from '@/components/emoji/svgaPlayer'
 import { SvgaWebView } from '@/components/emoji/SvgaWebView'

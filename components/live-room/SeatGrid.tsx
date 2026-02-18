@@ -40,6 +40,7 @@ interface SeatGridProps {
 	onTurnOff?: (seatNumber: number) => void
 	onMuteUser?: (userId: string) => void
 	onUnmuteUser?: (userId: string) => void
+	onOccupiedSeatPress?: (user: SeatUser) => void
 }
 
 function getRowsForSeatCount(seatCount: number): number[] | null {
@@ -61,6 +62,7 @@ export function SeatGrid({
 	onTurnOff,
 	onMuteUser,
 	onUnmuteUser,
+	onOccupiedSeatPress,
 }: SeatGridProps) {
 	const [openSeatNumber, setOpenSeatNumber] = useState<number | null>(null)
 	const seatNumbers = Array.from({ length: seatCount }, (_, i) => i + 1)
@@ -100,6 +102,7 @@ export function SeatGrid({
 		onTurnOff,
 		onMuteUser,
 		onUnmuteUser,
+		onOccupiedSeatPress,
 		isOpen: false,
 		onOpenChange: setOpenSeatNumber,
 		itemSize: SEAT_ITEM_SIZE,

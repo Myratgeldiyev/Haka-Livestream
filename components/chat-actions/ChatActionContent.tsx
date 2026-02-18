@@ -1,3 +1,4 @@
+import { LevelBadge } from '@/components/ui/LevelBadge'
 import type { ChatActionContentProps } from '@/types/chat-actions/chat-action.types'
 import React, { ReactNode } from 'react'
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
@@ -7,8 +8,8 @@ import ActionUserIcon from '../ui/icons/chat-actions/actionUserIcon'
 import ChatCallIcon from '../ui/icons/chat-actions/ChatCallIcon'
 import ChatFollowIcon from '../ui/icons/chat-actions/ChatFollowIcon'
 import ChatMessageIcon from '../ui/icons/chat-actions/ChatMessageIcon'
-import ChatUnfollowIcon from '../ui/icons/chat-actions/ChatUnfollowIcon'
 import ChatPrizeIcon from '../ui/icons/chat-actions/ChatPrizeIcon'
+import ChatUnfollowIcon from '../ui/icons/chat-actions/ChatUnfollowIcon'
 import KickOutIcon from '../ui/icons/chat-actions/KickOutIcon'
 import SobackoIcon from '../ui/icons/chat-actions/SobackoIcon'
 import FemaleIcon from '../ui/icons/gender-age-icons/femaleIcon'
@@ -105,6 +106,7 @@ export function ChatActionContent({
 	onCall,
 	onViewProfile,
 	onMention,
+	level,
 }: ChatActionContentProps) {
 	return (
 		<View style={styles.container}>
@@ -160,13 +162,8 @@ export function ChatActionContent({
 					<Text style={styles.badgeText}>India</Text>
 					<IndiaFlagRounded size={16} />
 				</View>
-				<View style={styles.badgeLocation}>
-					<Text style={styles.badgeText}>💎 23</Text>
-				</View>
-				<View style={styles.badgeLocation}>
-					<Text style={styles.badgeText}>💎 22</Text>
-				</View>
 
+				{level != null && <LevelBadge level={user.level} />}
 				<View style={styles.badgeSvip}>
 					<ActionUserIcon size={30} />
 					<Text style={styles.badgeText}>SVIP</Text>
@@ -194,13 +191,7 @@ export function ChatActionContent({
 			<View style={styles.actionsRow}>
 				<ActionButton
 					label={isFollowed ? 'Unfollow' : 'Follow'}
-					icon={
-						isFollowed ? (
-							<ChatUnfollowIcon />
-						) : (
-							<ChatFollowIcon />
-						)
-					}
+					icon={isFollowed ? <ChatUnfollowIcon /> : <ChatFollowIcon />}
 					onPress={isFollowed ? onUnfollow : onFollow}
 				/>
 				<ActionButton

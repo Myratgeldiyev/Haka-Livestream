@@ -1,3 +1,4 @@
+// DEPRECATED: Replaced by Lottie (lottie-react-native). Do not use for new code.
 import React, { useCallback, useEffect } from 'react'
 import { Platform, StyleSheet, View } from 'react-native'
 

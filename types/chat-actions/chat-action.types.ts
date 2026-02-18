@@ -45,6 +45,7 @@ export interface ChatActionOverlayProps {
 	onKickOut?: (user: ChatUser, reason: KickOutReason) => void
 	onViewProfile?: (user: ChatUser) => void
 	onMention?: (user: ChatUser) => void
+	level?: number
 }
 
 export interface ChatActionContentProps {
@@ -58,6 +59,7 @@ export interface ChatActionContentProps {
 	onCall?: () => void
 	onViewProfile?: () => void
 	onMention?: () => void
+	level?: number
 }
 
 export interface UseChatActionAnimationConfig {
