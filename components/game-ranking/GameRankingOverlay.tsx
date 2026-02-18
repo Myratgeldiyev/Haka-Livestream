@@ -27,12 +27,8 @@ export function GameRankingOverlay({
 }: GameRankingOverlayProps) {
 	const [modalVisible, setModalVisible] = useState(false)
 	const [activeTab, setActiveTab] = useState<MainTabType>('onlineUsers')
-	const { users, role, fetchAllUsersInChatRoom } = useLiveChatStore()
-	const visibleUsers = useMemo(() => {
-		if (role === 'owner') return users
-		if (role === 'admin') return users.filter(u => u.role === 'admin')
-		return []
-	}, [users, role])
+	const { users, fetchAllUsersInChatRoom } = useLiveChatStore()
+	const visibleUsers = useMemo(() => users, [users])
 	useEffect(() => {
 		if (!visible || !roomId) return
 		fetchAllUsersInChatRoom(roomId).catch(error => {
@@ -85,7 +81,7 @@ export function GameRankingOverlay({
 			case 'onlineUsers':
 				return (
 					<OnlineUsersSection
-						data={visibleUsers.filter(u => u.user.is_online)}
+					data={visibleUsers}
 					/>
 				)
 

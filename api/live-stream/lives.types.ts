@@ -33,7 +33,8 @@ export interface LiveStreamDetailsResponse {
 	display_id?: number
 }
 
-// Request body types
+export type FollowingStreamsResponse = LiveStreamDetailsResponse[]
+
 export interface UserIdBody {
 	user_id: string
 }

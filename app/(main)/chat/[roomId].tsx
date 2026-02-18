@@ -7,6 +7,7 @@ import {
 	RoomBottomBar,
 	SeatGrid,
 } from '@/components/live-room'
+import type { RoomPlayUserRole } from '@/components/room-play/room-play.types'
 import {
 	InviteMicSheet,
 	InviteMicUser,
@@ -49,8 +50,6 @@ type Seat = {
 }
 
 type SeatsState = Record<number, Seat>
-
-type UserRole = 'owner' | 'admin' | 'user'
 
 function buildEmptySeats(count: number): SeatsState {
 	return Object.fromEntries(
@@ -110,16 +109,55 @@ export default function ChatRoomScreen() {
 	const muteMyself = useLiveChatStore(s => s.muteMyself)
 	const unmuteMyself = useLiveChatStore(s => s.unmuteMyself)
 	const storeIsMuted = useLiveChatStore(s => s.isMuted)
+	const followRoom = useLiveChatStore(s => s.followRoom)
+	const unfollowRoom = useLiveChatStore(s => s.unfollowRoom)
 
 	const authenticatedUser = useAuthStore(state => state.user)
 	const myUserId = authenticatedUser?.user_id?.toString()
 	const { data: myProfile } = useMyProfile()
 
-	const currentUserRole: UserRole =
+	const currentUserRole: RoomPlayUserRole =
 		authenticatedUser?.user_id?.toString() ===
 		activeRoom?.owner?.user_id?.toString()
 			? 'owner'
-			: 'user'
+			: 'listener'
+
+	const [isFollowing, setIsFollowing] = useState(false)
+
+	const handleToggleFollowRoom = useCallback(async () => {
+		if (!roomId) return
+		console.log('[CHAT_ROOM] handleToggleFollowRoom start', {
+			roomId,
+			isFollowing,
+		})
+		try {
+			if (isFollowing) {
+				console.log('[CHAT_ROOM] calling unfollowRoom')
+				await unfollowRoom(roomId)
+				setIsFollowing(false)
+			} else {
+				console.log('[CHAT_ROOM] calling followRoom')
+				const res = await followRoom(roomId)
+				console.log('[CHAT_ROOM] followRoom success', res)
+				setIsFollowing(true)
+			}
+		} catch (e: any) {
+			console.log('[CHAT_ROOM] handleToggleFollowRoom error', {
+				status: e?.response?.status,
+				data: e?.response?.data,
+				url: e?.config?.url,
+				method: e?.config?.method,
+				requestData: e?.config?.data,
+				message: e?.message,
+			})
+			Alert.alert(
+				'Follow error',
+				e?.response?.data?.message ||
+					e?.message ||
+					'Failed to update follow state. Please try again.',
+			)
+		}
+	}, [roomId, isFollowing, followRoom, unfollowRoom])
 
 	useEffect(() => {
 		if (!roomId) {
@@ -514,6 +552,9 @@ export default function ChatRoomScreen() {
 						<TopUserInfo
 							data={activeRoom}
 							onEditPress={() => setEditVisible(true)}
+							userRole={currentUserRole}
+							isFollowing={isFollowing}
+							onToggleFollow={handleToggleFollowRoom}
 						/>
 						<TopRightControls
 							roomId={roomId}

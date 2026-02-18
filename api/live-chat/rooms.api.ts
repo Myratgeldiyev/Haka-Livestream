@@ -1,3 +1,4 @@
+import type { LiveStreamDetailsResponse } from '@/api/live-stream/lives.types'
 import { apiClient } from '../axios'
 import { ENDPOINTS } from '../endpoints'
 import {
@@ -21,6 +22,13 @@ import {
 	UpdateRoomRequest,
 	UploadRoomImagePayload,
 } from './room.types'
+
+// Follow room response example:
+// { "message": "Follow successful", "room_id": "<uuid>" }
+export interface FollowRoomResponse {
+	message: string
+	room_id: string
+}
 
 export const roomsApi = {
 	createRoom: async (
@@ -246,5 +254,27 @@ export const roomsApi = {
 			`${ENDPOINTS.ROOMS.CREATE_ROOM}${roomId}/unmute_user/`,
 			payload,
 		)
+	},
+
+	followRoom: async (roomId: string): Promise<FollowRoomResponse> => {
+		const res = await apiClient.post(ENDPOINTS.ROOMS.FOLLOW_ROOM, {
+			room_id: roomId,
+		})
+		return res.data
+	},
+
+	unfollowRoom: async (roomId: string): Promise<void> => {
+		const res = await apiClient.delete(ENDPOINTS.ROOMS.UNFOLLOW_ROOM(roomId))
+		return res.data
+	},
+
+	getMyChatRoom: async (): Promise<LiveStreamDetailsResponse> => {
+		const { data } = await apiClient.get(ENDPOINTS.ROOMS.GET_MY_CHATROOM)
+		return data
+	},
+
+	getFollowingRooms: async (): Promise<LiveStreamDetailsResponse[]> => {
+		const { data } = await apiClient.get(ENDPOINTS.ROOMS.FOLLOWING_ROOMS)
+		return data
 	},
 }

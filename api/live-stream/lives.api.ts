@@ -240,4 +240,32 @@ export const livesApi = {
 		)
 		return data
 	},
+
+	followStream: async (streamId: string): Promise<unknown> => {
+		const res = await apiClient.post(ENDPOINTS.LIVE_STREAM.FOLLOW_STREAM, {
+			stream_id: streamId,
+		})
+		return res.data
+	},
+
+	unfollowStream: async (streamId: string): Promise<unknown> => {
+		const res = await apiClient.delete(
+			ENDPOINTS.LIVE_STREAM.UNFOLLOW_STREAM(streamId),
+		)
+		return res.data
+	},
+
+	getMyLiveStream: async (): Promise<LiveStreamDetailsResponse> => {
+		const { data } = await apiClient.get(
+			ENDPOINTS.LIVE_STREAM.GET_MY_LIVESTREAM,
+		)
+		return data
+	},
+
+	getFollowingStreams: async (): Promise<LiveStreamDetailsResponse[]> => {
+		const { data } = await apiClient.get(
+			ENDPOINTS.LIVE_STREAM.FOLLOWING_STREAMS,
+		)
+		return data
+	},
 }

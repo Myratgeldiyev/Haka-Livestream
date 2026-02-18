@@ -45,6 +45,10 @@ export const ENDPOINTS = {
 		SEND_MESSAGE: (roomId: string) => `voice/rooms/${roomId}/messages/`,
 		GET_MESSAGES: (roomId: string) => `voice/rooms/${roomId}/messages/`,
 		KICK_OUT_USER: (roomId: string) => `voice/rooms/${roomId}/remove_user/`,
+		FOLLOW_ROOM: 'voice/follow-room/',
+		UNFOLLOW_ROOM: (roomId: string) => `voice/unfollow-room/${roomId}/`,
+		GET_MY_CHATROOM: 'voice/get-my-chatroom/',
+		FOLLOWING_ROOMS: 'voice/following-rooms/',
 	},
 	LIVE_STREAM: {
 		STREAMS: 'video/streams/',
@@ -73,6 +77,10 @@ export const ENDPOINTS = {
 		UPLOAD_ROOM_IMAGE: (id: string) => `video/streams/${id}/upload_room_image/`,
 		GET_MESSAGES: (streamId: string) => `video/streams/${streamId}/messages/`,
 		SEND_MESSAGE: (streamId: string) => `video/streams/${streamId}/messages/`,
+		FOLLOW_STREAM: 'video/follow-stream/',
+		UNFOLLOW_STREAM: (streamId: string) => `video/unfollow-stream/${streamId}/`,
+		GET_MY_LIVESTREAM: 'video/get-my-livestream/',
+		FOLLOWING_STREAMS: 'video/following-streams/',
 	},
 	STREAM_BATTLES: {
 		BASE: 'video/stream-battles/',

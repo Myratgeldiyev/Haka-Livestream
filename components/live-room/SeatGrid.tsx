@@ -24,7 +24,7 @@ type Seat = {
 
 type SeatsState = Record<number, Seat>
 
-type UserRole = 'owner' | 'admin' | 'user'
+type UserRole = 'owner' | 'admin' | 'listener'
 
 interface SeatGridProps {
 	seatCount?: number

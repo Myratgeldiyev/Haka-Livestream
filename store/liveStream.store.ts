@@ -136,6 +136,8 @@ function mapStreamMessagesRaw(raw: unknown): ChatMessage[] {
 	streamMessages: ChatMessage[]
 	/** Speaker slots 1–3 for RightControlPanel. Client-only lock; users from getStreamUsers. */
 	streamSlots: Record<number, StreamSlot>
+	/** Total users returned by getStreamUsers (for viewer count). */
+	streamUserCount: number
 	setStreamSlotsFromUsers: (users: RoomUsers[]) => void
 	/** Normalize raw getStreamUsers response and update streamSlots. */
 	setStreamSlotsFromResponse: (raw: unknown) => void
@@ -202,6 +204,14 @@ function mapStreamMessagesRaw(raw: unknown): ChatMessage[] {
 	setStreamPkBattleActive: (value: boolean) => void
 	/** Poll stream state (music, and when backend adds: PK). Updates store. */
 	fetchStreamState: (streamId: string) => Promise<void>
+	/** Current user's own livestream (if any). */
+	myLiveStream: LiveStreamDetailsResponse | null
+	/** Streams current user is following. */
+	followingStreams: LiveStreamDetailsResponse[]
+	followStream: (streamId: string) => Promise<unknown>
+	unfollowStream: (streamId: string) => Promise<unknown>
+	getMyLiveStream: () => Promise<LiveStreamDetailsResponse>
+	getFollowingStreams: () => Promise<LiveStreamDetailsResponse[]>
 }
 
 export const useLiveStreamStore = create<LiveStreamState>(set => ({
@@ -229,6 +239,9 @@ export const useLiveStreamStore = create<LiveStreamState>(set => ({
 	setPendingMinimizedStream: (data) => set({ pendingMinimizedStream: data }),
 	streamMessages: [],
 	streamSlots: {},
+	streamUserCount: 0,
+	myLiveStream: null,
+	followingStreams: [],
 	setStreamSlotsFromUsers: (users: RoomUsers[]) => {
 		set(state => {
 			const slots: Record<number, StreamSlot> = {}
@@ -252,7 +265,10 @@ export const useLiveStreamStore = create<LiveStreamState>(set => ({
 						: null,
 				}
 			}
-			return { streamSlots: { ...state.streamSlots, ...slots } }
+			return {
+				streamSlots: { ...state.streamSlots, ...slots },
+				streamUserCount: users.length,
+			}
 		})
 	},
 	setStreamSlotsFromResponse: (raw: unknown) =>
@@ -279,7 +295,10 @@ export const useLiveStreamStore = create<LiveStreamState>(set => ({
 						: null,
 				}
 			}
-			return { streamSlots: { ...state.streamSlots, ...slots } }
+			return {
+				streamSlots: { ...state.streamSlots, ...slots },
+				streamUserCount: users.length,
+			}
 		}),
 	setStreamSlotLock: (slotNumber: number, locked: boolean) =>
 		set(state => ({
@@ -742,6 +761,62 @@ export const useLiveStreamStore = create<LiveStreamState>(set => ({
 		} catch (e: unknown) {
 			const message =
 				e instanceof Error ? e.message : 'Failed to get nearby streams'
+			set({ error: message })
+			throw e
+		}
+	},
+
+	followStream: async (streamId: string) => {
+		try {
+			set({ error: null })
+			await initializeAuth()
+			return await livesApi.followStream(streamId)
+		} catch (e: unknown) {
+			const message =
+				e instanceof Error ? e.message : 'Failed to follow stream'
+			set({ error: message })
+			throw e
+		}
+	},
+
+	unfollowStream: async (streamId: string) => {
+		try {
+			set({ error: null })
+			await initializeAuth()
+			return await livesApi.unfollowStream(streamId)
+		} catch (e: unknown) {
+			const message =
+				e instanceof Error ? e.message : 'Failed to unfollow stream'
+			set({ error: message })
+			throw e
+		}
+	},
+
+	getMyLiveStream: async () => {
+		try {
+			set({ error: null })
+			await initializeAuth()
+			const details = await livesApi.getMyLiveStream()
+			set({ myLiveStream: details })
+			return details
+		} catch (e: unknown) {
+			const message =
+				e instanceof Error ? e.message : 'Failed to get my livestream'
+			set({ error: message })
+			throw e
+		}
+	},
+
+	getFollowingStreams: async () => {
+		try {
+			set({ error: null })
+			await initializeAuth()
+			const streams = await livesApi.getFollowingStreams()
+			set({ followingStreams: streams })
+			return streams
+		} catch (e: unknown) {
+			const message =
+				e instanceof Error ? e.message : 'Failed to get following streams'
 			set({ error: message })
 			throw e
 		}

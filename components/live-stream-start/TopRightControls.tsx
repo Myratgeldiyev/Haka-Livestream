@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
 	viewerCount: {
 		fontSize: 14,
 		fontWeight: '600',
-		color: '#333333',
+		color: '#fff',
 	},
 	closeButton: {
 		width: 28,

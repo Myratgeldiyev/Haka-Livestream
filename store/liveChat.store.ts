@@ -1,5 +1,4 @@
 import { initializeAuth } from '@/api/axios'
-import { tokenService } from '@/services/token.service'
 import {
 	AddUserAsAdminRequest,
 	ChatMessage,
@@ -14,6 +13,7 @@ import {
 	UploadRoomImagePayload,
 } from '@/api/live-chat/room.types'
 import { roomsApi } from '@/api/live-chat/rooms.api'
+import type { LiveStreamDetailsResponse } from '@/api/live-stream/lives.types'
 import {
 	joinChannel,
 	leaveChannel,
@@ -21,11 +21,12 @@ import {
 	resetAgoraEngine,
 	unmuteLocalAudio,
 } from '@/services/agora/agora.service'
+import { tokenService } from '@/services/token.service'
 import { KickOutReason } from '@/types/chat-actions'
 import { Audio } from 'expo-av'
 import { create } from 'zustand'
 
-interface LiveChatState {
+	interface LiveChatState {
 	rtcToken: string | null
 	channelName: string | null
 	uid: number | null
@@ -93,6 +94,14 @@ interface LiveChatState {
 	setPendingMinimized: (
 		data: { roomId: string; imageUrl: string; title: string } | null,
 	) => void
+	/** Current user's own chat room (if any). */
+	myChatRoom: LiveStreamDetailsResponse | null
+	/** Chat rooms the current user is following. */
+	followingRooms: LiveStreamDetailsResponse[]
+	followRoom: (roomId: string) => Promise<import('@/api/live-chat/rooms.api').FollowRoomResponse>
+	unfollowRoom: (roomId: string) => Promise<unknown>
+	getMyChatRoom: () => Promise<LiveStreamDetailsResponse>
+	getFollowingRooms: () => Promise<LiveStreamDetailsResponse[]>
 }
 
 export const useLiveChatStore = create<LiveChatState>((set, get) => ({
@@ -121,6 +130,8 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 	minimizedRoomId: null,
 	minimizedRoomImage: null,
 	minimizedRoomTitle: null,
+	myChatRoom: null,
+	followingRooms: [],
 
 	setRoomSeatCount: (count: number) => set({ roomSeatCount: count }),
 	setMinimized: (roomId: string, imageUrl: string, title?: string) =>
@@ -261,70 +272,79 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 				throw new Error('Microphone permission denied')
 			}
 
-		await initializeAuth()
-		await resetAgoraEngine()
+			await initializeAuth()
+			await resetAgoraEngine()
 
-		// #region agent log
-		fetch('http://127.0.0.1:7243/ingest/5dc12a94-a263-4786-a3a6-a66ee4516557', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				location: 'liveChat.store:createAndJoinRoom:beforeCreateRoom',
-				message: 'About to call createRoom API',
-				data: {
-					hasToken: !!(await tokenService.getToken()),
-					payload: { title: 'Live Chat', description: 'Live chat room' },
-				},
-				timestamp: Date.now(),
-				hypothesisId: 'H1',
-			}),
-		}).catch(() => {})
-
-		let room
-		try {
-			room = await roomsApi.createRoom({
-				title: 'Live Chat',
-				description: 'Live chat room',
-			})
 			// #region agent log
-			fetch('http://127.0.0.1:7243/ingest/5dc12a94-a263-4786-a3a6-a66ee4516557', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					location: 'liveChat.store:createAndJoinRoom:createRoomSuccess',
-					message: 'createRoom API succeeded',
-					data: { roomId: room?.id, hasRoom: !!room },
-					timestamp: Date.now(),
-					hypothesisId: 'H1',
-				}),
-			}).catch(() => {})
-			// #endregion
-		} catch (createRoomError: any) {
-			// #region agent log
-			fetch('http://127.0.0.1:7243/ingest/5dc12a94-a263-4786-a3a6-a66ee4516557', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					location: 'liveChat.store:createAndJoinRoom:createRoomError',
-					message: 'createRoom API failed',
-					data: {
-						errorMessage: createRoomError?.message,
-						errorStatus: createRoomError?.response?.status,
-						errorData: createRoomError?.response?.data,
-						errorConfig: {
-							url: createRoomError?.config?.url,
-							method: createRoomError?.config?.method,
-							headers: createRoomError?.config?.headers,
+			fetch(
+				'http://127.0.0.1:7243/ingest/5dc12a94-a263-4786-a3a6-a66ee4516557',
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						location: 'liveChat.store:createAndJoinRoom:beforeCreateRoom',
+						message: 'About to call createRoom API',
+						data: {
+							hasToken: !!(await tokenService.getToken()),
+							payload: { title: 'Live Chat', description: 'Live chat room' },
 						},
+						timestamp: Date.now(),
+						hypothesisId: 'H1',
+					}),
+				},
+			).catch(() => {})
+
+			let room
+			try {
+				room = await roomsApi.createRoom({
+					title: 'Live Chat',
+					description: 'Live chat room',
+				})
+				// #region agent log
+				fetch(
+					'http://127.0.0.1:7243/ingest/5dc12a94-a263-4786-a3a6-a66ee4516557',
+					{
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							location: 'liveChat.store:createAndJoinRoom:createRoomSuccess',
+							message: 'createRoom API succeeded',
+							data: { roomId: room?.id, hasRoom: !!room },
+							timestamp: Date.now(),
+							hypothesisId: 'H1',
+						}),
 					},
-					timestamp: Date.now(),
-					hypothesisId: 'H1',
-				}),
-			}).catch(() => {})
+				).catch(() => {})
+				// #endregion
+			} catch (createRoomError: any) {
+				// #region agent log
+				fetch(
+					'http://127.0.0.1:7243/ingest/5dc12a94-a263-4786-a3a6-a66ee4516557',
+					{
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							location: 'liveChat.store:createAndJoinRoom:createRoomError',
+							message: 'createRoom API failed',
+							data: {
+								errorMessage: createRoomError?.message,
+								errorStatus: createRoomError?.response?.status,
+								errorData: createRoomError?.response?.data,
+								errorConfig: {
+									url: createRoomError?.config?.url,
+									method: createRoomError?.config?.method,
+									headers: createRoomError?.config?.headers,
+								},
+							},
+							timestamp: Date.now(),
+							hypothesisId: 'H1',
+						}),
+					},
+				).catch(() => {})
+				// #endregion
+				throw createRoomError
+			}
 			// #endregion
-			throw createRoomError
-		}
-		// #endregion
 
 			console.log('[createAndJoinRoom] Room created with id:', room.id)
 
@@ -531,7 +551,7 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 	muteMyself: async (roomId: string) => {
 		const { uid, users } = get()
 		const prevUsers = users
-		// Optimistic: update UI immediately so icon changes without waiting for API
+
 		set({
 			isMuted: true,
 			users:
@@ -557,7 +577,6 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 	unmuteMyself: async (roomId: string) => {
 		const { uid, users } = get()
 		const prevUsers = users
-		// Optimistic: update UI immediately so icon changes without waiting for API
 		set({
 			isMuted: false,
 			users:
@@ -721,6 +740,54 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 		try {
 			await initializeAuth()
 			await roomsApi.startPk(payload)
+		} catch (e: any) {
+			set({ error: e.message })
+			throw e
+		}
+	},
+
+	followRoom: async (roomId: string) => {
+		try {
+			set({ error: null })
+			await initializeAuth()
+			return await roomsApi.followRoom(roomId)
+		} catch (e: any) {
+			set({ error: e.message })
+			throw e
+		}
+	},
+
+	unfollowRoom: async (roomId: string) => {
+		try {
+			set({ error: null })
+			await initializeAuth()
+			return await roomsApi.unfollowRoom(roomId)
+		} catch (e: any) {
+			set({ error: e.message })
+			throw e
+		}
+	},
+
+	getMyChatRoom: async () => {
+		try {
+			set({ error: null })
+			await initializeAuth()
+			const room = await roomsApi.getMyChatRoom()
+			set({ myChatRoom: room })
+			return room
+		} catch (e: any) {
+			set({ error: e.message })
+			throw e
+		}
+	},
+
+	getFollowingRooms: async () => {
+		try {
+			set({ error: null })
+			await initializeAuth()
+			const rooms = await roomsApi.getFollowingRooms()
+			set({ followingRooms: rooms })
+			return rooms
 		} catch (e: any) {
 			set({ error: e.message })
 			throw e

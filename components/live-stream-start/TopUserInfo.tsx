@@ -1,18 +1,33 @@
 import { RoomResponse } from '@/api/live-chat/room.types'
 import type { RoomPlayUserRole } from '@/components/room-play/room-play.types'
 import React, { useState } from 'react'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import {
+	Image,
+	ImageBackground,
+	Pressable,
+	StyleSheet,
+	Text,
+	View,
+} from 'react-native'
+import FollowRoomIcon from '../ui/icons/chat/FollowRoomIcon'
 import { CenterBadge } from './CenterBadge'
 import { TopUserInfoSheet } from './TopUserInfoSheet'
 
 interface TopUserInfoProps {
 	data: RoomResponse | null
 	onEditPress: () => void
-	/** When provided (live stream), overrides role in sheet and uses stream API. */
 	userRole?: RoomPlayUserRole
+	isFollowing?: boolean
+	onToggleFollow?: () => void
 }
 
-export function TopUserInfo({ data, onEditPress, userRole }: TopUserInfoProps) {
+export function TopUserInfo({
+	data,
+	onEditPress,
+	userRole,
+	isFollowing,
+	onToggleFollow,
+}: TopUserInfoProps) {
 	const [sheetVisible, setSheetVisible] = useState(false)
 
 	const handlePress = () => {
@@ -25,8 +40,12 @@ export function TopUserInfo({ data, onEditPress, userRole }: TopUserInfoProps) {
 
 	return (
 		<>
-			<Pressable onPress={handlePress}>
-				<View style={styles.container}>
+			<ImageBackground
+				source={require('@/assets/images/top-user.info.png')}
+				style={styles.container}
+				imageStyle={styles.backgroundImage}
+			>
+				<Pressable style={styles.infoPressable} onPress={handlePress}>
 					<View style={styles.avatarContainer}>
 						<Image
 							source={
@@ -40,20 +59,24 @@ export function TopUserInfo({ data, onEditPress, userRole }: TopUserInfoProps) {
 						/>
 					</View>
 					<View style={styles.textContainer}>
-						<Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
+						<Text style={styles.title} numberOfLines={1} ellipsizeMode='tail'>
 							{data?.title}
 						</Text>
 						<Text
 							style={styles.displayId}
 							numberOfLines={1}
-							ellipsizeMode="tail"
+							ellipsizeMode='tail'
 						>
 							{data?.id ?? ''}
 						</Text>
 					</View>
-					<CenterBadge />
-				</View>
-			</Pressable>
+				</Pressable>
+				{isFollowing ? (
+					<CenterBadge onPress={onToggleFollow} />
+				) : (
+					<FollowRoomIcon onPress={onToggleFollow} />
+				)}
+			</ImageBackground>
 
 			<TopUserInfoSheet
 				visible={sheetVisible}
@@ -69,12 +92,19 @@ const styles = StyleSheet.create({
 	container: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		backgroundColor: 'rgba(255, 255, 255, 0.3)',
 		borderRadius: 12,
 		paddingHorizontal: 8,
+		paddingRight: 12,
 		paddingVertical: 4,
-		gap: 10,
 		alignSelf: 'flex-start',
+	},
+	backgroundImage: {
+		borderRadius: 12,
+	},
+	infoPressable: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 10,
 	},
 	avatarContainer: {
 		width: 38,

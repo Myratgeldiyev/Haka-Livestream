@@ -148,6 +148,7 @@ export default function LiveRoomScreen() {
 	const enterStream = useLiveStreamStore(s => s.enterStream)
 	const fetchStreamState = useLiveStreamStore(s => s.fetchStreamState)
 	const streamMusicPlaying = useLiveStreamStore(s => s.streamMusicPlaying)
+	const streamUserCount = useLiveStreamStore(s => s.streamUserCount)
 	const streamPkOverlayOpen = useLiveStreamStore(s => s.streamPkOverlayOpen)
 	const streamPkBattleActive = useLiveStreamStore(s => s.streamPkBattleActive)
 	const setStreamPkOverlayOpen = useLiveStreamStore(
@@ -168,6 +169,12 @@ export default function LiveRoomScreen() {
 
 	const useStreamMusicApi = !!streamId
 
+	const followStream = useLiveStreamStore(s => s.followStream)
+	const unfollowStream = useLiveStreamStore(s => s.unfollowStream)
+	const getFollowingStreams = useLiveStreamStore(s => s.getFollowingStreams)
+
+	const [isFollowing, setIsFollowing] = useState(false)
+
 	const userRole: RoomPlayUserRole = (() => {
 		if (isStreamMode) return 'owner'
 		const ownerId = streamDetails?.owner?.user_id
@@ -176,6 +183,49 @@ export default function LiveRoomScreen() {
 		const role = currentStreamRole as LiveStreamUserRole | null
 		return role === 'admin' ? 'admin' : 'listener'
 	})()
+
+	useEffect(() => {
+		if (!streamId) return
+		let cancelled = false
+		const syncFollowing = async () => {
+			try {
+				const streams = await getFollowingStreams()
+				if (cancelled) return
+				setIsFollowing(streams.some(s => s.id === streamId))
+			} catch {
+				if (!cancelled) setIsFollowing(false)
+			}
+		}
+		syncFollowing()
+		return () => {
+			cancelled = true
+		}
+	}, [streamId, getFollowingStreams])
+
+	const handleToggleFollowStream = useCallback(async () => {
+		if (!streamId) return
+  console.log('[LIVE_ROOM] handleToggleFollowStream start', {
+    streamId,
+    isFollowing,
+  })
+		try {
+			if (isFollowing) {
+      console.log('[LIVE_ROOM] calling unfollowStream')
+				await unfollowStream(streamId)
+			} else {
+      console.log('[LIVE_ROOM] calling followStream')
+				await followStream(streamId)
+			}
+			const streams = await getFollowingStreams()
+    console.log(
+      '[LIVE_ROOM] getFollowingStreams result length',
+      streams.length,
+    )
+			setIsFollowing(streams.some(s => s.id === streamId))
+  } catch (e) {
+    console.log('[LIVE_ROOM] handleToggleFollowStream error', e)
+		}
+	}, [streamId, isFollowing, followStream, unfollowStream, getFollowingStreams])
 
 	useEffect(() => {
 		const streamId = liveStream?.id
@@ -603,14 +653,12 @@ export default function LiveRoomScreen() {
 											})()}
 											onEditPress={() => setEditVisible(true)}
 											userRole={userRole}
+											isFollowing={isFollowing}
+											onToggleFollow={handleToggleFollowStream}
 										/>
 										<TopRightControls
 											roomId={isStreamMode ? '' : (roomId ?? '')}
-											viewerCount={
-												streamDetails?.display_id ??
-												liveStream?.display_id ??
-												0
-											}
+											viewerCount={streamUserCount}
 											onClose={handleClose}
 										/>
 									</View>
@@ -757,11 +805,7 @@ export default function LiveRoomScreen() {
 								/>
 								<TopRightControls
 									roomId={isStreamMode ? '' : (roomId ?? '')}
-									viewerCount={
-										streamDetails?.display_id ??
-										liveStream?.display_id ??
-										0
-									}
+									viewerCount={streamUserCount}
 									onClose={handleClose}
 								/>
 							</View>
