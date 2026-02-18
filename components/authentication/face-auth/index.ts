@@ -1,0 +1,5 @@
+export { FaceAuthHeader } from './FaceAuthHeader'
+export { FaceAuthPhotoPlaceholder } from './FaceAuthPhotoPlaceholder'
+export { FaceAuthTipsRow } from './FaceAuthTipsRow'
+export { FaceAuthActions } from './FaceAuthActions'
+export { FaceAuthSuccessContent } from './FaceAuthSuccessContent'
