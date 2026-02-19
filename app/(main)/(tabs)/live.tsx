@@ -95,6 +95,8 @@ export default function LiveScreen() {
 	const {
 		getStreamsList,
 		getNearbyLiveStreams,
+		getFollowingStreams,
+		followingStreams,
 		pendingMinimizedStream,
 		setMinimizedStream,
 		setPendingMinimizedStream,
@@ -154,7 +156,10 @@ export default function LiveScreen() {
 					console.error('[LiveTab] getNearbyLiveStreams error:', error)
 					setNearbyStreamUsers([])
 				})
-		}, [getStreamsList, getNearbyLiveStreams]),
+			getFollowingStreams().catch((error) => {
+				console.error('[LiveTab] getFollowingStreams error:', error)
+			})
+		}, [getStreamsList, getNearbyLiveStreams, getFollowingStreams]),
 	)
 
 	const content = useMemo(() => {
@@ -166,13 +171,17 @@ export default function LiveScreen() {
 			case 'new':
 				return <NewTab users={mockUsers} />
 			case 'follow':
-				return <FollowTab users={mockUsers} />
+				return (
+					<FollowTab
+						users={followingStreams.map(mapStreamToListUser)}
+					/>
+				)
 			case 'nearby':
 				return <NearbyTab users={nearbyStreamUsers} />
 			default:
 				return null
 		}
-	}, [activeTab, liveStreamUsers, nearbyStreamUsers, isLiveTabLoading])
+	}, [activeTab, liveStreamUsers, nearbyStreamUsers, followingStreams, isLiveTabLoading])
 
 	return (
 		<View style={styles.container}>

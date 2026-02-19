@@ -1,4 +1,5 @@
 import { initializeAuth } from '@/api/axios'
+import { API_CONFIG } from '@/api/endpoints'
 import { ChatMessage, type RoomUsers } from '@/api/live-chat/room.types'
 import { livesApi } from '@/api/live-stream/lives.api'
 import {
@@ -16,7 +17,6 @@ import {
 	resetAgoraEngine,
 	unmuteLocalAudio,
 } from '@/services/agora/agora.service'
-import { API_CONFIG } from '@/api/endpoints'
 import { Camera } from 'expo-camera'
 import { create } from 'zustand'
 
@@ -45,7 +45,12 @@ function normalizeToRoomUsers(raw: unknown): RoomUsers[] {
 			is_muted: item?.is_muted ?? false,
 		}))
 	}
-	if (raw && typeof raw === 'object' && 'results' in raw && Array.isArray((raw as any).results)) {
+	if (
+		raw &&
+		typeof raw === 'object' &&
+		'results' in raw &&
+		Array.isArray((raw as any).results)
+	) {
 		return normalizeToRoomUsers((raw as any).results)
 	}
 	return []
@@ -110,7 +115,7 @@ function mapStreamMessagesRaw(raw: unknown): ChatMessage[] {
 	}))
 }
 
-	interface LiveStreamState {
+interface LiveStreamState {
 	liveStream: LiveStreamResponse | null
 	streamDetails: LiveStreamDetailsResponse | null
 	/** Role from enterStream API (when joining as viewer). Owner is set in startStream. */
@@ -121,18 +126,24 @@ function mapStreamMessagesRaw(raw: unknown): ChatMessage[] {
 	minimizedStreamId: string | null
 	minimizedStreamImage: string | null
 	minimizedStreamTitle: string | null
-	setMinimizedStream: (streamId: string, imageUrl: string, title?: string) => void
+	setMinimizedStream: (
+		streamId: string,
+		imageUrl: string,
+		title?: string,
+	) => void
 	clearMinimizedStream: () => void
 	pendingMinimizedStream: {
 		streamId: string
 		imageUrl: string
 		title: string
 	} | null
-	setPendingMinimizedStream: (data: {
-		streamId: string
-		imageUrl: string
-		title: string
-	} | null) => void
+	setPendingMinimizedStream: (
+		data: {
+			streamId: string
+			imageUrl: string
+			title: string
+		} | null,
+	) => void
 	streamMessages: ChatMessage[]
 	/** Speaker slots 1–3 for RightControlPanel. Client-only lock; users from getStreamUsers. */
 	streamSlots: Record<number, StreamSlot>
@@ -142,22 +153,25 @@ function mapStreamMessagesRaw(raw: unknown): ChatMessage[] {
 	/** Normalize raw getStreamUsers response and update streamSlots. */
 	setStreamSlotsFromResponse: (raw: unknown) => void
 	/** Move current user to another slot without API (already speaker). */
-	moveCurrentUserToSlot: (currentUserId: string, targetSlotNumber: number) => void
+	moveCurrentUserToSlot: (
+		currentUserId: string,
+		targetSlotNumber: number,
+	) => void
 	setStreamSlotLock: (slotNumber: number, locked: boolean) => void
 	isLoading: boolean
 	isJoined: boolean
 	error: string | null
-	/** Viewer's Agora connection info (when joining as viewer, not owner) */
+
 	viewerRtcToken: string | null
 	viewerChannelName: string | null
 	viewerUid: number | null
-	/** Agora UID of the stream owner (for remote video rendering in viewers) */
+
 	ownerAgoraUid: number | null
 	setOwnerAgoraUid: (uid: number | null) => void
-	/** Owner's video availability (from Agora events) - true when owner's video is ON and available */
+
 	ownerVideoAvailable: boolean
 	setOwnerVideoAvailable: (available: boolean) => void
-	/** Owner's local video availability (for owner's own state) */
+
 	localOwnerVideoAvailable: boolean
 	setLocalOwnerVideoAvailable: (available: boolean) => void
 	startStream: () => Promise<LiveStreamResponse>
@@ -193,20 +207,18 @@ function mapStreamMessagesRaw(raw: unknown): ChatMessage[] {
 	sendStreamMessage: (streamId: string, content: string) => Promise<unknown>
 	createStreamBattle: (body: CreateStreamBattleRequest) => Promise<unknown>
 	getStreamBattle: (id: string) => Promise<unknown>
-	/** Synced from server (polling). When true, all clients see music as playing. */
+
 	streamMusicPlaying: boolean
 	setStreamMusicPlaying: (value: boolean) => void
-	/** PK overlay open – owner sets; when backend supports, viewers get via polling. */
+
 	streamPkOverlayOpen: boolean
 	setStreamPkOverlayOpen: (value: boolean) => void
-	/** PK battle active – owner sets; when backend supports, viewers get via polling. */
+
 	streamPkBattleActive: boolean
 	setStreamPkBattleActive: (value: boolean) => void
-	/** Poll stream state (music, and when backend adds: PK). Updates store. */
+
 	fetchStreamState: (streamId: string) => Promise<void>
-	/** Current user's own livestream (if any). */
 	myLiveStream: LiveStreamDetailsResponse | null
-	/** Streams current user is following. */
 	followingStreams: LiveStreamDetailsResponse[]
 	followStream: (streamId: string) => Promise<unknown>
 	unfollowStream: (streamId: string) => Promise<unknown>
@@ -236,7 +248,7 @@ export const useLiveStreamStore = create<LiveStreamState>(set => ({
 			minimizedStreamTitle: null,
 		}),
 	pendingMinimizedStream: null,
-	setPendingMinimizedStream: (data) => set({ pendingMinimizedStream: data }),
+	setPendingMinimizedStream: data => set({ pendingMinimizedStream: data }),
 	streamMessages: [],
 	streamSlots: {},
 	streamUserCount: 0,
@@ -305,7 +317,10 @@ export const useLiveStreamStore = create<LiveStreamState>(set => ({
 			streamSlots: {
 				...state.streamSlots,
 				[slotNumber]: {
-					...(state.streamSlots[slotNumber] ?? { status: 'unlocked', user: null }),
+					...(state.streamSlots[slotNumber] ?? {
+						status: 'unlocked',
+						user: null,
+					}),
 					status: locked ? 'locked' : 'unlocked',
 				},
 			},
@@ -325,8 +340,14 @@ export const useLiveStreamStore = create<LiveStreamState>(set => ({
 			const currentUser = slots[fromSlot]?.user ?? null
 			if (!currentUser) return state
 			const userInTarget = slots[targetSlotNumber]?.user ?? null
-			const existingFrom = slots[fromSlot] ?? { status: 'unlocked' as const, user: null }
-			const existingTarget = slots[targetSlotNumber] ?? { status: 'unlocked' as const, user: null }
+			const existingFrom = slots[fromSlot] ?? {
+				status: 'unlocked' as const,
+				user: null,
+			}
+			const existingTarget = slots[targetSlotNumber] ?? {
+				status: 'unlocked' as const,
+				user: null,
+			}
 			slots[fromSlot] = { ...existingFrom, user: userInTarget }
 			slots[targetSlotNumber] = { ...existingTarget, user: currentUser }
 			return { streamSlots: slots }
@@ -340,20 +361,26 @@ export const useLiveStreamStore = create<LiveStreamState>(set => ({
 	ownerAgoraUid: null,
 	setOwnerAgoraUid: (uid: number | null) => set({ ownerAgoraUid: uid }),
 	ownerVideoAvailable: false,
-	setOwnerVideoAvailable: (available: boolean) => set({ ownerVideoAvailable: available }),
+	setOwnerVideoAvailable: (available: boolean) =>
+		set({ ownerVideoAvailable: available }),
 	localOwnerVideoAvailable: false,
-	setLocalOwnerVideoAvailable: (available: boolean) => set({ localOwnerVideoAvailable: available }),
+	setLocalOwnerVideoAvailable: (available: boolean) =>
+		set({ localOwnerVideoAvailable: available }),
 
 	streamMusicPlaying: false,
 	setStreamMusicPlaying: (value: boolean) => set({ streamMusicPlaying: value }),
 	streamPkOverlayOpen: false,
-	setStreamPkOverlayOpen: (value: boolean) => set({ streamPkOverlayOpen: value }),
+	setStreamPkOverlayOpen: (value: boolean) =>
+		set({ streamPkOverlayOpen: value }),
 	streamPkBattleActive: false,
-	setStreamPkBattleActive: (value: boolean) => set({ streamPkBattleActive: value }),
+	setStreamPkBattleActive: (value: boolean) =>
+		set({ streamPkBattleActive: value }),
 
 	fetchStreamState: async (streamId: string) => {
 		try {
-			const res = await livesApi.checkIfMusicIsPlaying(streamId) as { is_playing?: boolean }
+			const res = (await livesApi.checkIfMusicIsPlaying(streamId)) as {
+				is_playing?: boolean
+			}
 			set({ streamMusicPlaying: !!res?.is_playing })
 		} catch {
 			// Non-fatal; keep previous state
@@ -503,7 +530,7 @@ export const useLiveStreamStore = create<LiveStreamState>(set => ({
 			await initializeAuth()
 			await resetAgoraEngine()
 
-			const res = await livesApi.enterStream(streamId) as EnterStreamResponse
+			const res = (await livesApi.enterStream(streamId)) as EnterStreamResponse
 			const role = res?.role
 			if (role === 'owner' || role === 'admin' || role === 'listener') {
 				set({ currentStreamRole: role })
@@ -772,8 +799,7 @@ export const useLiveStreamStore = create<LiveStreamState>(set => ({
 			await initializeAuth()
 			return await livesApi.followStream(streamId)
 		} catch (e: unknown) {
-			const message =
-				e instanceof Error ? e.message : 'Failed to follow stream'
+			const message = e instanceof Error ? e.message : 'Failed to follow stream'
 			set({ error: message })
 			throw e
 		}
