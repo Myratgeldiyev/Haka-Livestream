@@ -1,3 +1,4 @@
+import type { LiveStreamDetailsResponse } from '@/api/live-stream/lives.types'
 import { TopicEventBanner } from '@/components/home/TopicEventBanner'
 import {
 	FilterChips,
@@ -9,7 +10,6 @@ import {
 } from '@/components/party'
 import { spacing } from '@/constants/spacing'
 import { useLiveChatStore } from '@/store/liveChat.store'
-import { useLiveStreamStore } from '@/store/liveStream.store'
 import { useFocusEffect } from '@react-navigation/native'
 import { router } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
@@ -19,14 +19,27 @@ import {
 	ListRenderItem,
 	Modal,
 	RefreshControl,
+	SectionList,
 	StyleSheet,
 	Text,
 	View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
-
 const AVATAR_FALLBACK = require('@/assets/images/games/room-avatar.png')
+
+function liveStreamToRoomData(room: LiveStreamDetailsResponse): RoomData {
+	return {
+		id: room.id,
+		hostName: room.owner.username,
+		hostAvatar: room.owner.profile_picture
+			? { uri: room.owner.profile_picture }
+			: AVATAR_FALLBACK,
+		category: room.title || 'Chatting',
+		viewerCount: room.display_id ?? 0,
+		viewers: [],
+	}
+}
 
 const FILTER_ITEMS = [
 	{ id: 'dubai', label: 'Dubai' },
@@ -69,7 +82,13 @@ export default function PartyScreen() {
 		setMinimized,
 		setPendingMinimized,
 		pendingMinimized,
+		myChatRoom,
+		followingRooms,
+		getMyChatRoom,
+		getFollowingRooms,
 	} = useLiveChatStore()
+
+	const [followingLoading, setFollowingLoading] = useState(false)
 
 	// Apply pending minimize when party screen is focused (after Keep from voice room)
 	useFocusEffect(
@@ -86,10 +105,27 @@ export default function PartyScreen() {
 	)
 
 	useEffect(() => {
-		if (rooms.length === 0) {
+		if (activeTab === 'party' && rooms.length === 0) {
 			fetchRooms()
 		}
-	}, [rooms.length, fetchRooms])
+	}, [activeTab, rooms.length, fetchRooms])
+
+	const fetchFollowingData = useCallback(async () => {
+		setFollowingLoading(true)
+		try {
+			await Promise.all([getMyChatRoom(), getFollowingRooms()])
+		} catch (e) {
+			console.log('Failed to load following data', e)
+		} finally {
+			setFollowingLoading(false)
+		}
+	}, [getMyChatRoom, getFollowingRooms])
+
+	useEffect(() => {
+		if (activeTab === 'following') {
+			fetchFollowingData()
+		}
+	}, [activeTab, fetchFollowingData])
 
 	const mappedRooms: RoomData[] = useMemo(() => {
 		return rooms.map(room => ({
@@ -119,6 +155,16 @@ export default function PartyScreen() {
 		return items
 	}, [mappedRooms, roomsLoading, rooms.length, isRefreshing])
 
+	type FollowingSection = { title: string; data: RoomData[] }
+	const followingSections: FollowingSection[] = useMemo(() => {
+		const mine: RoomData[] = myChatRoom ? [liveStreamToRoomData(myChatRoom)] : []
+		const following: RoomData[] = followingRooms.map(liveStreamToRoomData)
+		return [
+			{ title: 'Mine', data: mine },
+			{ title: 'Following', data: following },
+		]
+	}, [myChatRoom, followingRooms])
+
 	const renderItem: ListRenderItem<ListItem> = ({ item }) => {
 		if (item.type === 'banner') {
 			return (
@@ -144,11 +190,15 @@ export default function PartyScreen() {
 	const handleRefresh = useCallback(async () => {
 		setIsRefreshing(true)
 		try {
-			await fetchRooms()
+			if (activeTab === 'following') {
+				await fetchFollowingData()
+			} else {
+				await fetchRooms()
+			}
 		} finally {
 			setIsRefreshing(false)
 		}
-	}, [fetchRooms])
+	}, [activeTab, fetchFollowingData, fetchRooms])
 
 	const handleRoomPress = useCallback(
 		async (data: RoomData) => {
@@ -208,38 +258,82 @@ export default function PartyScreen() {
 
 			<PartyHeader activeTab={activeTab} onTabChange={setActiveTab} />
 
-			<FilterChips
-				items={FILTER_ITEMS}
-				activeId={activeFilter}
-				onSelect={setActiveFilter}
-			/>
+			{activeTab === 'party' && (
+				<FilterChips
+					items={FILTER_ITEMS}
+					activeId={activeFilter}
+					onSelect={setActiveFilter}
+				/>
+			)}
 
-			<FlatList
-				data={listData}
-				renderItem={renderItem}
-				keyExtractor={(item, index) =>
-					item.type === 'banner'
-						? `banner-${index}`
-						: item.type === 'skeleton'
-							? `skeleton-${index}`
-							: item.data.id
-				}
-				onEndReached={handleEndReached}
-				onEndReachedThreshold={0.4}
-				ListFooterComponent={listFooterComponent}
-				refreshControl={
-					<RefreshControl
-						refreshing={isRefreshing}
-						onRefresh={handleRefresh}
-						colors={['#9C27B0']}
-					/>
-				}
-				showsVerticalScrollIndicator={false}
-				contentContainerStyle={[
-					styles.listContent,
-					{ paddingBottom: spacing.xxxl * 4 + insets.bottom },
-				]}
-			/>
+			{activeTab === 'party' ? (
+				<FlatList
+					data={listData}
+					renderItem={renderItem}
+					keyExtractor={(item, index) =>
+						item.type === 'banner'
+							? `banner-${index}`
+							: item.type === 'skeleton'
+								? `skeleton-${index}`
+								: item.data.id
+					}
+					onEndReached={handleEndReached}
+					onEndReachedThreshold={0.4}
+					ListFooterComponent={listFooterComponent}
+					refreshControl={
+						<RefreshControl
+							refreshing={isRefreshing}
+							onRefresh={handleRefresh}
+							colors={['#9C27B0']}
+						/>
+					}
+					showsVerticalScrollIndicator={false}
+					contentContainerStyle={[
+						styles.listContent,
+						{ paddingBottom: spacing.xxxl * 4 + insets.bottom },
+					]}
+				/>
+			) : (
+				<SectionList<RoomData, FollowingSection>
+					sections={followingSections}
+					keyExtractor={item => item.id}
+					renderItem={({ item }) => (
+						<RoomCard data={item} onPress={handleRoomPress} />
+					)}
+					renderSectionHeader={({ section: { title, data } }) =>
+						data.length > 0 ? (
+							<View style={styles.sectionHeader}>
+								<Text style={styles.sectionHeaderText}>{title}</Text>
+							</View>
+						) : null
+					}
+					stickySectionHeadersEnabled={false}
+					refreshControl={
+						<RefreshControl
+							refreshing={isRefreshing}
+							onRefresh={handleRefresh}
+							colors={['#9C27B0']}
+						/>
+					}
+					ListEmptyComponent={
+						followingLoading ? (
+							<View style={styles.followingEmpty}>
+								<ActivityIndicator size="large" color="#9C27B0" />
+								<Text style={styles.footerText}>Loading...</Text>
+							</View>
+						) : (
+							<View style={styles.followingEmpty}>
+								<Text style={styles.footerTextMuted}>No rooms</Text>
+							</View>
+						)
+					}
+					contentContainerStyle={[
+						styles.listContent,
+						{ paddingBottom: spacing.xxxl * 4 + insets.bottom },
+					]}
+					showsVerticalScrollIndicator={false}
+				/>
+			)}
 
 			<FloatingPartyButton />
 		</SafeAreaView>
@@ -269,6 +363,23 @@ const styles = StyleSheet.create({
 	footerTextMuted: {
 		fontSize: 12,
 		color: '#999',
+	},
+	sectionHeader: {
+		paddingHorizontal: spacing.lg,
+		paddingTop: spacing.md,
+		paddingBottom: spacing.xs,
+	},
+	sectionHeaderText: {
+		fontSize: 14,
+		fontWeight: '600',
+		color: '#1A1A1A',
+	},
+	followingEmpty: {
+		flexGrow: 1,
+		justifyContent: 'center',
+		alignItems: 'center',
+		paddingVertical: spacing.xxxl,
+		gap: spacing.sm,
 	},
 	joinOverlay: {
 		flex: 1,
