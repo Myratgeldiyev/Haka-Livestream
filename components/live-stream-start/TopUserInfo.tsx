@@ -67,15 +67,17 @@ export function TopUserInfo({
 							numberOfLines={1}
 							ellipsizeMode='tail'
 						>
-							{data?.id ?? ''}
+							{data?.display_id ?? ''}
 						</Text>
 					</View>
 				</Pressable>
-				{isFollowing ? (
-					<CenterBadge onPress={onToggleFollow} />
-				) : (
-					<FollowRoomIcon onPress={onToggleFollow} />
-				)}
+				<View style={styles.followButtonWrap}>
+					{isFollowing ? (
+						<CenterBadge onPress={onToggleFollow} />
+					) : (
+						<FollowRoomIcon onPress={onToggleFollow} />
+					)}
+				</View>
 			</ImageBackground>
 
 			<TopUserInfoSheet
@@ -95,7 +97,7 @@ const styles = StyleSheet.create({
 		borderRadius: 12,
 		paddingHorizontal: 8,
 		paddingRight: 12,
-		paddingVertical: 4,
+		paddingVertical: 6,
 		alignSelf: 'flex-start',
 	},
 	backgroundImage: {
@@ -112,6 +114,9 @@ const styles = StyleSheet.create({
 		borderRadius: 10,
 		overflow: 'hidden',
 		backgroundColor: '#C4C4C4',
+	},
+	followButtonWrap: {
+		marginLeft: 10,
 	},
 	avatarImage: {
 		width: 38,

@@ -1,6 +1,8 @@
+import { getEmojiDisplaySource } from '@/constants/emoji'
 import { scaleWidth, screenWidth } from '@/constants/platform'
 import { spacing } from '@/constants/spacing'
 import { fontSizes, fontWeights, lineHeights } from '@/constants/typography'
+import { Image as ExpoImage } from 'expo-image'
 import React, { useCallback, useRef, useState } from 'react'
 import { Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -27,7 +29,7 @@ type Seat = {
 	isTurnedOff?: boolean
 }
 
-type UserRole = 'owner' | 'admin' | 'user'
+type UserRole = 'owner' | 'admin' | 'listener'
 
 interface SeatItemProps {
 	seatNumber: number
@@ -46,6 +48,8 @@ interface SeatItemProps {
 	onMuteUser?: (userId: string) => void
 	onUnmuteUser?: (userId: string) => void
 	onOccupiedSeatPress?: (user: SeatUser) => void
+	/** When set, show this emoji on top of the avatar (occupied seat only). */
+	showEmojiId?: string | null
 }
 
 type Position = {
@@ -60,7 +64,7 @@ export function SeatItem({
 	seat,
 	size = 'normal',
 	itemSize,
-	userRole = 'user',
+	userRole = 'listener',
 	iconsOnly = false,
 	isOpen = false,
 	onOpenChange,
@@ -72,6 +76,7 @@ export function SeatItem({
 	onMuteUser,
 	onUnmuteUser,
 	onOccupiedSeatPress,
+	showEmojiId,
 }: SeatItemProps) {
 	const insets = useSafeAreaInsets()
 	const wrapperRef = useRef<View>(null)
@@ -165,19 +170,39 @@ export function SeatItem({
 							style={[
 								styles.iconSlot,
 								{ width: iconSize, height: iconSize },
-								isMuted && styles.iconSlotRelative,
+								(isMuted || showEmojiId) && styles.iconSlotRelative,
+								showEmojiId && styles.iconSlotOverflowHidden,
 							]}
 						>
 							<Image
 								source={{ uri: seat?.user?.avatar ?? '' }}
-								style={[styles.avatar, { width: iconSize, height: iconSize }]}
+								style={[
+									styles.avatar,
+									{ width: iconSize, height: iconSize },
+									showEmojiId && styles.avatarHidden,
+								]}
 								resizeMode='cover'
 							/>
-							{isMuted && (
+							{isMuted && !showEmojiId && (
 								<View style={styles.mutedIconWrap}>
 									<MicMutedIcon width={20} height={20} />
 								</View>
 							)}
+							{showEmojiId && (() => {
+								const emojiSource = getEmojiDisplaySource(showEmojiId)
+								if (emojiSource == null) return null
+								return (
+									<ExpoImage
+										source={emojiSource as any}
+										style={[
+											styles.seatEmojiBubble,
+											styles.seatEmojiBubbleFill,
+											{ borderRadius: iconSize / 2 },
+										]}
+										contentFit='cover'
+									/>
+								)
+							})()}
 						</View>
 						<Text style={styles.username} numberOfLines={1}>
 							{seat?.user?.username}
@@ -349,6 +374,20 @@ const styles = StyleSheet.create({
 	avatar: {
 		borderRadius: 999,
 		backgroundColor: '#333',
+	},
+	avatarHidden: {
+		opacity: 0,
+	},
+	iconSlotOverflowHidden: {
+		overflow: 'hidden',
+		borderRadius: 999,
+	},
+	seatEmojiBubble: {
+		position: 'absolute',
+		zIndex: 1,
+	},
+	seatEmojiBubbleFill: {
+		...StyleSheet.absoluteFillObject,
 	},
 	username: {
 		fontSize: fontSizes.sm,

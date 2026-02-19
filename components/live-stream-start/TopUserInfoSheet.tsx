@@ -15,6 +15,7 @@ import {
 	StyleSheet,
 	Text,
 	View,
+	useWindowDimensions,
 } from 'react-native'
 import Animated, {
 	Easing,
@@ -185,7 +186,7 @@ interface TopUserInfoSheetProps {
 	visible: boolean
 	onClose: () => void
 	data: RoomResponse | null
-	/** When provided (live stream), overrides role and uses stream API for updates. */
+
 	userRoleOverride?: RoomPlayUserRole
 }
 
@@ -214,14 +215,16 @@ export function TopUserInfoSheet({
 		React.useState(false)
 	const animationProgress = useSharedValue(0)
 	const insets = useSafeAreaInsets()
+	const { width: screenWidth } = useWindowDimensions()
 	const windowHeight = Dimensions.get('window').height
 	const sheetHeight = Math.min(SHEET_HEIGHT_MAX, windowHeight - insets.top - 60)
+	// Responsive: same width/height for all customization grid icons so layout is even
+	const gridIconSize = Math.min(64, Math.max(44, Math.floor(screenWidth * 0.14)))
 	const sheetHeightSv = useSharedValue(sheetHeight)
 	React.useEffect(() => {
 		sheetHeightSv.value = sheetHeight
 	}, [sheetHeight, sheetHeightSv])
 
-	// Kullanıcının owner veya admin olup olmadığını kontrol et
 	const isOwnerOrAdmin = role === 'owner' || role === 'admin'
 
 	const handleEditSave = useCallback(
@@ -457,75 +460,82 @@ export function TopUserInfoSheet({
 											</Text>
 											<View style={styles.customizationGrid}>
 												<Pressable
-													style={styles.gridItem}
+													style={[styles.gridItem, { minWidth: gridIconSize, minHeight: gridIconSize + 24 }]}
 													onPress={() => setRoomTypeSheetVisible(true)}
 												>
 													<Image
 														source={require('@/assets/room-play/11.png')}
-														style={{ width: 60, height: 48 }}
+														style={{ width: gridIconSize, height: gridIconSize }}
+														resizeMode='contain'
 													/>
 													<Text style={styles.rowText}>Settings</Text>
 												</Pressable>
 
 												<Pressable
-													style={styles.gridItem}
+													style={[styles.gridItem, { minWidth: gridIconSize, minHeight: gridIconSize + 24 }]}
 													onPress={() => setEditInfoSheetVisible(true)}
 												>
 													<Image
 														source={require('@/assets/room-play/12.png')}
-														style={{ width: 60, height: 48 }}
+														style={{ width: gridIconSize, height: gridIconSize }}
+														resizeMode='contain'
 													/>
 													<Text style={styles.rowText}>Edit</Text>
 												</Pressable>
 
 												<Pressable
-													style={styles.gridItem}
+													style={[styles.gridItem, { minWidth: gridIconSize, minHeight: gridIconSize + 24 }]}
 													onPress={() => setThemeStoreSheetVisible(true)}
 												>
 													<Image
 														source={require('@/assets/room-play/13.png')}
-														style={{ width: 60, height: 48 }}
+														style={{ width: gridIconSize, height: gridIconSize }}
+														resizeMode='contain'
 													/>
 													<Text style={styles.rowText}>Theme</Text>
 												</Pressable>
 
 												<Pressable
-													style={styles.gridItem}
+													style={[styles.gridItem, { minWidth: gridIconSize, minHeight: gridIconSize + 24 }]}
 													onPress={() => setPasswordSheetVisible(true)}
 												>
 													<Image
 														source={require('@/assets/room-play/14.png')}
-														style={{ width: 60, height: 48 }}
+														style={{ width: gridIconSize, height: gridIconSize }}
+														resizeMode='contain'
 													/>
 													<Text style={styles.rowText}>Password</Text>
 												</Pressable>
 
 												<Pressable
-													style={styles.gridItem}
+													style={[styles.gridItem, { minWidth: gridIconSize, minHeight: gridIconSize + 24 }]}
 													onPress={() => setRoomDataSheetVisible(true)}
 												>
 													<Image
 														source={require('@/assets/room-play/15.png')}
-														style={{ width: 60, height: 48 }}
+														style={{ width: gridIconSize, height: gridIconSize }}
+														resizeMode='contain'
 													/>
 													<Text style={styles.rowText}>Room data</Text>
 												</Pressable>
 
-												<View style={styles.gridItem}>
+												<View style={[styles.gridItem, { minWidth: gridIconSize, minHeight: gridIconSize + 24 }]}>
 													<Image
 														source={require('@/assets/room-play/16.png')}
-														style={{ width: 60, height: 48 }}
+														style={{ width: gridIconSize, height: gridIconSize }}
+														resizeMode='contain'
 													/>
 													<Text style={styles.rowText}>Fan Badge</Text>
 												</View>
 
 												<Pressable
-													style={styles.gridItem}
+													style={[styles.gridItem, { minWidth: gridIconSize, minHeight: gridIconSize + 24 }]}
 													onPress={() => setRoomAdminSheetVisible(true)}
 												>
 													<Image
 														source={require('@/assets/room-play/17.png')}
-														style={{ width: 60, height: 48 }}
+														style={{ width: gridIconSize, height: gridIconSize }}
+														resizeMode='contain'
 													/>
 													<Text style={styles.rowText}>Room admin</Text>
 												</Pressable>

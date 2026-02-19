@@ -7,12 +7,12 @@ import {
 	RoomBottomBar,
 	SeatGrid,
 } from '@/components/live-room'
-import type { RoomPlayUserRole } from '@/components/room-play/room-play.types'
 import {
 	InviteMicSheet,
 	InviteMicUser,
 } from '@/components/live-room/invite-mic'
 import { PKStartOverlay } from '@/components/pk-start-overlay'
+import type { RoomPlayUserRole } from '@/components/room-play/room-play.types'
 import { DraggableMusicPlayer } from '@/components/room-tools/overlays/DraggableMusicPlayer'
 import { MusicOverlay } from '@/components/room-tools/overlays/MusicOverlay'
 import { fontSizes, fontWeights } from '@/constants/typography'
@@ -28,9 +28,12 @@ import {
 	Alert,
 	BackHandler,
 	ImageBackground,
+	KeyboardAvoidingView,
+	Platform,
 	StyleSheet,
 	Text,
 	View,
+	useWindowDimensions,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -61,6 +64,7 @@ function buildEmptySeats(count: number): SeatsState {
 }
 
 export default function ChatRoomScreen() {
+	const { height: screenHeight } = useWindowDimensions()
 	const { roomId: rawRoomId } = useLocalSearchParams<{ roomId: string }>()
 	const [, setEditVisible] = useState(false)
 	const [inviteSheetSeatNumber, setInviteSheetSeatNumber] = useState<
@@ -84,6 +88,10 @@ export default function ChatRoomScreen() {
 	const [selectedSeatUser, setSelectedSeatUser] = useState<ChatUser | null>(
 		null,
 	)
+	const [seatEmojiBurst, setSeatEmojiBurst] = useState<{
+		seatNumber: number
+		emojiId: string
+	} | null>(null)
 
 	const roomId = Array.isArray(rawRoomId) ? rawRoomId[0] : rawRoomId
 	const navigation = useNavigation()
@@ -540,6 +548,27 @@ export default function ChatRoomScreen() {
 		})
 	}, [roomId, isMuted, muteMyself, unmuteMyself])
 
+	const handleEmojiPicked = useCallback(
+		(emojiId: string) => {
+			if (!myUserId) return
+			const entry = Object.entries(seatsWithMuteStatus).find(([_, seat]) => {
+				const seatUserId = seat.user?.id?.toString()
+				return seatUserId != null && seatUserId === myUserId
+			})
+			if (!entry) return
+			const seatNumber = Number(entry[0])
+			setSeatEmojiBurst({ seatNumber, emojiId })
+			setTimeout(() => setSeatEmojiBurst(null), 2500)
+		},
+		[myUserId, seatsWithMuteStatus],
+	)
+
+	const seatSectionPaddingBottom = Math.min(
+		320,
+		Math.max(200, screenHeight * 0.36),
+	)
+	const chatSectionMaxHeight = Math.min(180, Math.max(90, screenHeight * 0.2))
+
 	return (
 		<View style={styles.container}>
 			<ImageBackground
@@ -547,39 +576,93 @@ export default function ChatRoomScreen() {
 				style={styles.background}
 				resizeMode='cover'
 			>
-				<SafeAreaView style={styles.safeAreaTop} edges={['top']}>
-					<View style={styles.topBar}>
-						<TopUserInfo
-							data={activeRoom}
-							onEditPress={() => setEditVisible(true)}
+				<KeyboardAvoidingView
+					behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+					style={styles.keyboardAvoid}
+					keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+				>
+					<SafeAreaView style={styles.safeAreaTop} edges={['top']}>
+						<View style={styles.topBar}>
+							<TopUserInfo
+								data={activeRoom}
+								onEditPress={() => setEditVisible(true)}
+								userRole={currentUserRole}
+								isFollowing={isFollowing}
+								onToggleFollow={handleToggleFollowRoom}
+							/>
+							<TopRightControls
+								roomId={roomId}
+								viewerCount={users.length}
+								onClose={handleClose}
+							/>
+						</View>
+					</SafeAreaView>
+
+					<View
+						style={[
+							styles.seatSection,
+							{ paddingBottom: seatSectionPaddingBottom },
+						]}
+					>
+						<SeatGrid
+							_screenId='chat-roomId'
+							seatCount={roomSeatCount}
+							seats={seatsWithMuteStatus}
+							seatEmojiBurst={seatEmojiBurst}
 							userRole={currentUserRole}
-							isFollowing={isFollowing}
-							onToggleFollow={handleToggleFollowRoom}
-						/>
-						<TopRightControls
-							roomId={roomId}
-							viewerCount={users.length}
-							onClose={handleClose}
+							onLockSeat={handleLockSeat}
+							onUnlockSeat={handleUnlockSeat}
+							onOpenInviteMic={handleOpenInviteMic}
+							onTakeSeat={handleTakeSeat}
+							onTurnOff={handleTurnOff}
+							onMuteUser={handleMuteUser}
+							onUnmuteUser={handleUnmuteUser}
+							onOccupiedSeatPress={handleOccupiedSeatPress}
 						/>
 					</View>
-				</SafeAreaView>
 
-				<View style={styles.seatSection}>
-					<SeatGrid
-						_screenId='chat-roomId'
-						seatCount={roomSeatCount}
-						seats={seatsWithMuteStatus}
-						userRole={currentUserRole}
-						onLockSeat={handleLockSeat}
-						onUnlockSeat={handleUnlockSeat}
-						onOpenInviteMic={handleOpenInviteMic}
-						onTakeSeat={handleTakeSeat}
-						onTurnOff={handleTurnOff}
-						onMuteUser={handleMuteUser}
-						onUnmuteUser={handleUnmuteUser}
-						onOccupiedSeatPress={handleOccupiedSeatPress}
-					/>
-				</View>
+					<View style={styles.bottomSection}>
+						<View style={styles.announcementWrapper}>
+							<AnnouncementBox
+								message={
+									activeRoom?.description ??
+									"Welcome everyone! Let's chat and have fun together!"
+								}
+							/>
+						</View>
+
+						<View
+							style={[styles.chatSection, { maxHeight: chatSectionMaxHeight }]}
+						>
+							<Text style={styles.publicMsgStatus}>
+								{publicMsgEnabled
+									? 'Public message enabled'
+									: 'Public message disabled'}
+							</Text>
+							{publicMsgEnabled ? (
+								<ChatList messages={messages} statusText={chatStatusText} />
+							) : null}
+						</View>
+						<SafeAreaView edges={['bottom']}>
+							<RoomBottomBar
+								onSend={handleSendMessage}
+								roomId={roomId}
+								publicMsgEnabled={publicMsgEnabled}
+								onTogglePublicMsg={handleTogglePublicMsg}
+								onOpenMusicPlayer={handleOpenMusicPlayer}
+								onRoomPKRandomMatch={() => setPkMatchOverlayVisible(true)}
+								onCalculatorStart={minutes =>
+									setCalculatorCountdown({ durationMinutes: minutes })
+								}
+								isUserOnSeat={isUserOnSeat}
+								isMuted={isMuted}
+								onToggleMute={handleToggleMute}
+								onTakeFirstAvailableSeat={handleTakeFirstAvailableSeat}
+								onEmojiPicked={handleEmojiPicked}
+							/>
+						</SafeAreaView>
+					</View>
+				</KeyboardAvoidingView>
 
 				<ChatActionOverlay
 					visible={selectedSeatUser !== null}
@@ -632,44 +715,6 @@ export default function ChatRoomScreen() {
 					durationMinutes={calculatorCountdown?.durationMinutes ?? null}
 					onClose={() => setCalculatorCountdown(null)}
 				/>
-
-				<View style={styles.bottomSection}>
-					<View style={styles.announcementWrapper}>
-						<AnnouncementBox
-							message={
-								activeRoom?.description ??
-								"Welcome everyone! Let's chat and have fun together!"
-							}
-						/>
-					</View>
-					<View style={styles.chatSection}>
-						<Text style={styles.publicMsgStatus}>
-							{publicMsgEnabled
-								? 'Public message enabled'
-								: 'Public message disabled'}
-						</Text>
-						{publicMsgEnabled ? (
-							<ChatList messages={messages} statusText={chatStatusText} />
-						) : null}
-					</View>
-					<SafeAreaView edges={['bottom']}>
-						<RoomBottomBar
-							onSend={handleSendMessage}
-							roomId={roomId}
-							publicMsgEnabled={publicMsgEnabled}
-							onTogglePublicMsg={handleTogglePublicMsg}
-							onOpenMusicPlayer={handleOpenMusicPlayer}
-							onRoomPKRandomMatch={() => setPkMatchOverlayVisible(true)}
-							onCalculatorStart={minutes =>
-								setCalculatorCountdown({ durationMinutes: minutes })
-							}
-							isUserOnSeat={isUserOnSeat}
-							isMuted={isMuted}
-							onToggleMute={handleToggleMute}
-							onTakeFirstAvailableSeat={handleTakeFirstAvailableSeat}
-						/>
-					</SafeAreaView>
-				</View>
 			</ImageBackground>
 		</View>
 	)
@@ -679,8 +724,14 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		backgroundColor: '#000',
+
+		overflow: 'hidden',
 	},
 	background: {
+		flex: 1,
+	},
+	// Responsiveness: KeyboardAvoidingView takes full space so keyboard pushes content up
+	keyboardAvoid: {
 		flex: 1,
 	},
 	safeAreaTop: {
@@ -695,9 +746,11 @@ const styles = StyleSheet.create({
 	},
 	seatSection: {
 		flex: 1,
-		paddingHorizontal: 16,
+		minHeight: 0,
+		width: '100%',
+		paddingHorizontal: 0,
 		marginTop: 0,
-		paddingBottom: 280,
+		// paddingBottom set inline from screen height so layout is responsive
 	},
 	bottomSection: {
 		position: 'absolute',
@@ -715,7 +768,10 @@ const styles = StyleSheet.create({
 		marginTop: 4,
 		marginBottom: 4,
 		paddingHorizontal: 16,
-		maxHeight: 140,
+		// maxHeight set inline from screen height for responsiveness
+		flexGrow: 0,
+		flexShrink: 1,
+		minHeight: 0,
 	},
 	publicMsgStatus: {
 		fontSize: fontSizes.sm,

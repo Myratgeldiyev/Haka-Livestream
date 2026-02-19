@@ -1,24 +1,26 @@
 import * as React from 'react'
-import { Pressable, type PressableProps } from 'react-native'
-import Svg, { Rect } from 'react-native-svg'
+import { Image, Pressable, type PressableProps } from 'react-native'
 
 type FollowRoomIconProps = PressableProps
 
-function FollowRoomIcon({ onPress, ...rest }: FollowRoomIconProps) {
+const ICON_SIZE = { width: 42, height: 39 }
+
+function FollowRoomIcon({ onPress, style, ...rest }: FollowRoomIconProps) {
+	const resolvedStyle = typeof style === 'function' ? undefined : style
 	return (
 		<Pressable
+			style={[ICON_SIZE, resolvedStyle]}
 			onPress={event => {
-				console.log('[FollowRoomIcon] pressed')
-				if (onPress) {
-					onPress(event)
-				}
+				if (onPress) onPress(event)
 			}}
 			hitSlop={8}
 			{...rest}
 		>
-			<Svg width={42} height={39} viewBox='0 0 42 39' fill='none'>
-				<Rect width={42} height={39} rx={5} fill='#5F22D9' />
-			</Svg>
+			<Image
+				source={require('@/assets/images/follow-room.png')}
+				style={ICON_SIZE}
+				resizeMode="contain"
+			/>
 		</Pressable>
 	)
 }

@@ -1,19 +1,24 @@
 import React from 'react'
 import {
-	Dimensions,
 	Image,
 	Pressable,
 	StyleSheet,
 	Text,
 	View,
+	useWindowDimensions,
 } from 'react-native'
-import { COLORS, GRID_CELL_SIZE, ROOM_PLAY_ICON_SIZE } from './room-play-styles'
+import { COLORS, getGridSizes } from './room-play-styles'
 import type { RoomPlayItemProps } from './room-play.types'
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window')
-
-function IconPlaceholder() {
-	return <View style={styles.iconPlaceholder} />
+function IconPlaceholder({ size }: { size: number }) {
+	return (
+		<View
+			style={[
+				styles.iconPlaceholder,
+				{ width: size * 0.5, height: size * 0.5 },
+			]}
+		/>
+	)
 }
 
 export function RoomPlayItem({
@@ -21,16 +26,34 @@ export function RoomPlayItem({
 	onPress,
 	showBackground = true,
 }: RoomPlayItemProps) {
+	const { width: screenWidth } = useWindowDimensions()
+	const { cellSize, iconSize } = getGridSizes(screenWidth)
+
 	const renderContent = () => {
 		if (item.imageSource) {
 			const showToggle = item.toggleActive !== undefined
+			const imgSize = iconSize * 1.0
 			return (
 				<>
-					<Image source={item.imageSource} style={styles.image} />
+					<Image
+						source={item.imageSource}
+						style={[
+							styles.image,
+							{
+								width: imgSize,
+								height: imgSize,
+								borderRadius: iconSize * 0.125,
+							},
+						]}
+					/>
 					{showToggle && (
 						<View
 							style={[
 								styles.toggleTrack,
+								{
+									right: iconSize * 0.35,
+									top: iconSize * 0.72,
+								},
 								item.toggleActive
 									? styles.toggleTrackOn
 									: styles.toggleTrackOff,
@@ -51,13 +74,30 @@ export function RoomPlayItem({
 			)
 		}
 		if (item.icon) return item.icon
-		return <IconPlaceholder />
+		return <IconPlaceholder size={iconSize} />
 	}
 
 	return (
-		<Pressable style={styles.container} onPress={onPress}>
-			<View style={styles.iconContainer}>{renderContent()}</View>
-			<Text style={styles.label} numberOfLines={1}>
+		<Pressable
+			style={[styles.container, { width: cellSize }]}
+			onPress={onPress}
+		>
+			<View
+				style={[
+					styles.iconContainer,
+					{
+						width: iconSize,
+						height: iconSize,
+						marginBottom: screenWidth * 0.012,
+					},
+				]}
+			>
+				{renderContent()}
+			</View>
+			<Text
+				style={[styles.label, { fontSize: Math.max(10, screenWidth * 0.028) }]}
+				numberOfLines={1}
+			>
 				{item.name}
 			</Text>
 		</Pressable>
@@ -67,28 +107,15 @@ export function RoomPlayItem({
 const styles = StyleSheet.create({
 	container: {
 		alignItems: 'center',
-		width: GRID_CELL_SIZE,
 	},
 	iconContainer: {
-		width: ROOM_PLAY_ICON_SIZE,
-		height: ROOM_PLAY_ICON_SIZE,
 		alignItems: 'center',
 		justifyContent: 'center',
-		marginBottom: SCREEN_WIDTH * 0.012,
 	},
-	iconPlaceholder: {
-		width: ROOM_PLAY_ICON_SIZE * 0.5,
-		height: ROOM_PLAY_ICON_SIZE * 0.5,
-	},
-	image: {
-		width: ROOM_PLAY_ICON_SIZE * 0.9,
-		height: ROOM_PLAY_ICON_SIZE * 0.9,
-		borderRadius: ROOM_PLAY_ICON_SIZE * 0.125,
-	},
+	iconPlaceholder: {},
+	image: {},
 	toggleTrack: {
 		position: 'absolute',
-		right: 15,
-		top: 35,
 		width: 10,
 		height: 6,
 		borderRadius: 3,
@@ -117,7 +144,6 @@ const styles = StyleSheet.create({
 	toggleThumbOn: {},
 	toggleThumbOff: {},
 	label: {
-		fontSize: Math.max(10, SCREEN_WIDTH * 0.028),
 		color: COLORS.textSecondary,
 		textAlign: 'center',
 	},

@@ -29,9 +29,32 @@ const CATEGORIES = ['Bag', 'Hot', 'Lucky', 'Event', 'SVIP', 'Customized']
 const QUANTITIES = [1, 10, 20, 50]
 
 export function GiftSendOverlay({ visible, onClose }: GiftSendOverlayProps) {
-	const { height: windowHeight } = useWindowDimensions()
+	const { width: windowWidth, height: windowHeight } = useWindowDimensions()
 	const insets = useSafeAreaInsets()
 	const overlayHeight = windowHeight * OVERLAY_HEIGHT_RATIO
+
+	const panelPaddingH = 16
+	const avatarRowPaddingH = 10
+	const avatarGap = 12
+	const allMarginLeft = 8
+	const numAvatarItems = 6 // 5 avatars + All
+	const availableAvatarWidth =
+		windowWidth -
+		panelPaddingH * 2 -
+		avatarRowPaddingH * 2 -
+		avatarGap * (numAvatarItems - 1) -
+		allMarginLeft
+	const avatarSize = Math.min(
+		44,
+		Math.max(32, Math.floor(availableAvatarWidth / numAvatarItems)),
+	)
+	// Responsive: gift area height scales with overlay so it never breaks layout
+	const giftAreaMinHeight = Math.min(
+		140,
+		Math.max(80, Math.floor(overlayHeight * 0.2)),
+	)
+	// Responsive: category gap so horizontal scroll doesn't look too tight on small screens
+	const categoryGap = Math.min(20, Math.max(12, Math.floor(windowWidth * 0.04)))
 
 	const [modalVisible, setModalVisible] = useState(false)
 	const [selectedQuantity, setSelectedQuantity] = useState(1)
@@ -139,20 +162,31 @@ export function GiftSendOverlay({ visible, onClose }: GiftSendOverlayProps) {
 					]}
 				>
 					<View style={styles.avatarRow}>
-						{[1, 2, 3, 4, 5].map(i => {
-							return (
-								<View
-									key={i}
-									style={
-										i === 1
-											? [styles.avatar, styles.avatarSelected]
-											: styles.avatar
-									}
-								/>
-							)
-						})}
-						<View style={styles.allWrap}>
-							<View style={styles.allIcon}>
+						{[1, 2, 3, 4, 5].map(i => (
+							<View
+								key={i}
+								style={[
+									styles.avatar,
+									{
+										width: avatarSize,
+										height: avatarSize,
+										borderRadius: avatarSize / 2,
+									},
+									i === 1 && styles.avatarSelected,
+								]}
+							/>
+						))}
+						<View style={[styles.allWrap, { marginLeft: avatarGap }]}>
+							<View
+								style={[
+									styles.allIcon,
+									{
+										width: avatarSize,
+										height: avatarSize,
+										borderRadius: avatarSize / 2,
+									},
+								]}
+							>
 								<GiftMicIcon />
 							</View>
 							<Text style={styles.allLabel}>All</Text>
@@ -163,7 +197,10 @@ export function GiftSendOverlay({ visible, onClose }: GiftSendOverlayProps) {
 						horizontal
 						showsHorizontalScrollIndicator={false}
 						style={styles.categoriesScroll}
-						contentContainerStyle={styles.categoriesContent}
+						contentContainerStyle={[
+							styles.categoriesContent,
+							{ gap: categoryGap },
+						]}
 					>
 						{CATEGORIES.map(cat => (
 							<Text key={cat} style={styles.categoryLabel}>
@@ -172,22 +209,16 @@ export function GiftSendOverlay({ visible, onClose }: GiftSendOverlayProps) {
 						))}
 					</ScrollView>
 
-					<View style={styles.giftArea} />
+					<View style={[styles.giftArea, { minHeight: giftAreaMinHeight }]} />
 
 					<View style={styles.bottomBar}>
 						<Pressable style={styles.balanceRow}>
 							<GoldIcon />
-
 							<Text style={styles.balanceText}>100</Text>
 							<RightArrowIcon color='#fff' />
 						</Pressable>
-						<View
-							style={{
-								flexDirection: 'row',
-								alignItems: 'center',
-								position: 'relative',
-							}}
-						>
+						{/* Responsive: flex row instead of absolute so quantity + send button always fit */}
+						<View style={styles.bottomBarRight}>
 							<View style={styles.quantityRow}>
 								{QUANTITIES.map(q => (
 									<Pressable
@@ -235,6 +266,8 @@ const styles = StyleSheet.create({
 		borderTopRightRadius: 20,
 		paddingHorizontal: 16,
 		paddingTop: 16,
+		overflow: 'hidden',
+		minHeight: 0,
 	},
 	avatarRow: {
 		backgroundColor: '#1D192F',
@@ -248,9 +281,6 @@ const styles = StyleSheet.create({
 		marginBottom: 16,
 	},
 	avatar: {
-		width: 44,
-		height: 44,
-		borderRadius: 22,
 		backgroundColor: 'rgba(255,255,255,0.15)',
 	},
 	avatarSelected: {
@@ -259,13 +289,9 @@ const styles = StyleSheet.create({
 	},
 	allWrap: {
 		alignItems: 'center',
-		marginLeft: 8,
 		position: 'relative',
 	},
 	allIcon: {
-		width: 44,
-		height: 44,
-		borderRadius: 22,
 		backgroundColor: 'rgba(255,255,255,0.2)',
 		justifyContent: 'center',
 		alignItems: 'center',
@@ -305,6 +331,7 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'space-between',
 		gap: 12,
+		flexWrap: 'wrap',
 	},
 	balanceRow: {
 		flexDirection: 'row',
@@ -316,10 +343,13 @@ const styles = StyleSheet.create({
 		fontWeight: fontWeights.semibold,
 		color: '#fff',
 	},
+	bottomBarRight: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+		flexShrink: 0,
+	},
 	quantityRow: {
-		position: 'absolute',
-		bottom: 5,
-		right: 70,
 		flexDirection: 'row',
 		alignItems: 'center',
 		backgroundColor: '#1D192F',

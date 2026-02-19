@@ -8,13 +8,13 @@ import {
 	TextInput,
 	View,
 } from 'react-native'
+import EmojiIcon from '../ui/icons/emojiIcon'
 import AppIcon from '../ui/icons/live-stream-view/appIcon'
 import GameStreamIcon from '../ui/icons/live-stream-view/gameStreamIcon'
 import MicSpeakIcon from '../ui/icons/live-stream-view/micSpeakIcon'
 import PkIcon from '../ui/icons/live-stream-view/pkIcon'
 import PrizeIcon from '../ui/icons/live-stream-view/prizeIcon'
 import RateFireIcon from '../ui/icons/live-stream-view/rateFireIcon'
-import EmojiIcon from '../ui/icons/emojiIcon'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -46,9 +46,7 @@ export function BottomInputBar({
 		setEmojiVisible(false)
 	}, [text, onSend])
 
-	const handleEmojiSelect = useCallback((_placeholder: string) => {
-		// Preview-only: emoji selection does not modify input text.
-	}, [])
+	const handleEmojiSelect = useCallback((_placeholder: string) => {}, [])
 
 	return (
 		<View style={styles.container}>

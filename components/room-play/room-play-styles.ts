@@ -53,6 +53,15 @@ export const GRID_CELL_SIZE =
 const ICON_SCALE = 0.68
 export const ROOM_PLAY_ICON_SIZE = GRID_CELL_SIZE * ICON_SCALE
 
+/** Responsive grid sizes from screen width (use with useWindowDimensions). Icon scale 0.78 for slightly larger tools. */
+export function getGridSizes(width: number) {
+	const horizontalPadding = width * 0.04
+	const itemGap = width * 0.03
+	const cellSize = (width - horizontalPadding * 2 - itemGap * 3) / 4
+	const iconSize = cellSize * 0.78
+	return { cellSize, iconSize, horizontalPadding, itemGap }
+}
+
 export const sharedStyles = StyleSheet.create({
 	overlay: {
 		...StyleSheet.absoluteFillObject,

@@ -18,9 +18,6 @@ import Svg, { Circle, Line, Path } from 'react-native-svg'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
-/** UUID v4 pattern; stream IDs are UUIDs, voice room IDs are not. Fallback to stream API when id looks like a stream id. */
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-
 const PLAYER_COLORS = {
 	background: '#3D3556',
 	textPrimary: '#FFFFFF',
@@ -41,6 +38,8 @@ const PLAYER_SPACING = {
 
 const MINI_SQUARE_SIZE = 64
 
+const HIT_SLOP = { top: 12, bottom: 12, left: 12, right: 12 }
+
 interface MusicPlayerOverlayProps {
 	visible: boolean
 	trackName: string
@@ -48,7 +47,7 @@ interface MusicPlayerOverlayProps {
 	onClose: () => void
 	mode?: 'inline' | 'fullscreen'
 	roomId?: string
-	/** When true, use video stream API (playMusic/stopMusic) instead of voice room API. */
+	/** When true, use video/streams API (live screen); when false/undefined, use voice/rooms API (chat screen). Must be set by caller from screen type — do not infer from id format. */
 	isStreamMode?: boolean
 	isCollapsed?: boolean
 	onCollapse?: () => void
@@ -270,22 +269,20 @@ export function MusicPlayerOverlay({
 
 	const playMusicApi = useCallback(
 		(id: string) => {
-			const useStreamApi = isStreamMode || (id != null && UUID_REGEX.test(id))
-			if (useStreamApi) streamPlayMusic(id).catch(() => {})
+			if (isStreamMode) streamPlayMusic(id).catch(() => {})
 			else playRoomMusic(id).catch(() => {})
 		},
 		[isStreamMode, streamPlayMusic, playRoomMusic]
 	)
 	const stopMusicApi = useCallback(
 		(id: string) => {
-			const useStreamApi = isStreamMode || (id != null && UUID_REGEX.test(id))
-			if (useStreamApi) streamStopMusic(id).catch(() => {})
+			if (isStreamMode) streamStopMusic(id).catch(() => {})
 			else stopRoomMusic(id).catch(() => {})
 		},
 		[isStreamMode, streamStopMusic, stopRoomMusic]
 	)
 
-	const PRESS_DEBOUNCE_MS = 420
+	const PRESS_DEBOUNCE_MS = 200
 	const withDebounce = useCallback(
 		(fn: () => void) => () => {
 			const now = Date.now()
@@ -488,14 +485,15 @@ export function MusicPlayerOverlay({
 					onPress={withDebounce(
 						isInline && onCollapse ? onCollapse : handlePowerOff
 					)}
-					hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+					hitSlop={HIT_SLOP}
+					delayLongPress={300}
 				>
 					<CollapseIcon />
 				</Pressable>
 				<Pressable
 					style={styles.iconButton}
 					onPress={withDebounce(handlePowerOff)}
-					hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+					hitSlop={HIT_SLOP}
 				>
 					<PowerIcon />
 				</Pressable>
@@ -526,19 +524,20 @@ export function MusicPlayerOverlay({
 					<Pressable
 						style={styles.controlButton}
 						onPress={withDebounce(handlePlayPause)}
+						hitSlop={HIT_SLOP}
 					>
 						{isPlaying ? <PauseIcon /> : <PlayIcon />}
 					</Pressable>
-					<Pressable style={styles.controlButton}>
+					<Pressable style={styles.controlButton} hitSlop={HIT_SLOP}>
 						<NextIcon />
 					</Pressable>
-					<Pressable style={styles.controlButton}>
+					<Pressable style={styles.controlButton} hitSlop={HIT_SLOP}>
 						<RepeatIcon />
 					</Pressable>
 					<Pressable
 						style={styles.controlButton}
 						onPress={withDebounce(() => onOpenPlaylist?.())}
-						hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+						hitSlop={HIT_SLOP}
 					>
 						<PlaylistIcon />
 					</Pressable>

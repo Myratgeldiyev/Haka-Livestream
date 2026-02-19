@@ -204,26 +204,26 @@ export default function LiveRoomScreen() {
 
 	const handleToggleFollowStream = useCallback(async () => {
 		if (!streamId) return
-  console.log('[LIVE_ROOM] handleToggleFollowStream start', {
-    streamId,
-    isFollowing,
-  })
+		console.log('[LIVE_ROOM] handleToggleFollowStream start', {
+			streamId,
+			isFollowing,
+		})
 		try {
 			if (isFollowing) {
-      console.log('[LIVE_ROOM] calling unfollowStream')
+				console.log('[LIVE_ROOM] calling unfollowStream')
 				await unfollowStream(streamId)
 			} else {
-      console.log('[LIVE_ROOM] calling followStream')
+				console.log('[LIVE_ROOM] calling followStream')
 				await followStream(streamId)
 			}
 			const streams = await getFollowingStreams()
-    console.log(
-      '[LIVE_ROOM] getFollowingStreams result length',
-      streams.length,
-    )
+			console.log(
+				'[LIVE_ROOM] getFollowingStreams result length',
+				streams.length,
+			)
 			setIsFollowing(streams.some(s => s.id === streamId))
-  } catch (e) {
-    console.log('[LIVE_ROOM] handleToggleFollowStream error', e)
+		} catch (e) {
+			console.log('[LIVE_ROOM] handleToggleFollowStream error', e)
 		}
 	}, [streamId, isFollowing, followStream, unfollowStream, getFollowingStreams])
 

@@ -4,36 +4,28 @@ import { spacing } from '@/constants/spacing'
 import { fontSizes, lineHeights } from '@/constants/typography'
 import React, { useCallback, useMemo, useState } from 'react'
 import {
-	Dimensions,
 	Keyboard,
 	Platform,
 	Pressable,
 	StyleSheet,
 	TextInput,
 	View,
+	useWindowDimensions,
 } from 'react-native'
 import type { RoomPlayUserRole } from '../room-play/room-play.types'
-import { GiftSendOverlay } from './GiftSendOverlay'
 import { RoomPlayOverlay } from '../room-play/RoomPlayOverlay'
 import ChatMessageIcon from '../ui/icons/chat/ChatMessageIcon'
 import ConsoleIcon from '../ui/icons/chat/ConsoleIcon'
 import PkIconChat from '../ui/icons/chat/PKiconChat'
 import EmojiIcon from '../ui/icons/emojiIcon'
 import AppIcon from '../ui/icons/live-stream-view/appIcon'
-import PrizeIcon from '../ui/icons/live-stream-view/prizeIcon'
-import ChairIcon from '../ui/icons/live-stream/chairIcon'
 import MicMutedIcon from '../ui/icons/live-stream-view/MicMutedIcon'
 import MicSpeakIcon from '../ui/icons/live-stream-view/micSpeakIcon'
+import PrizeIcon from '../ui/icons/live-stream-view/prizeIcon'
+import ChairIcon from '../ui/icons/live-stream/chairIcon'
+import { GiftSendOverlay } from './GiftSendOverlay'
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window')
-const INPUT_HEIGHT = Platform.select({ ios: 36, android: 34 }) ?? 36
-const INPUT_MAX_WIDTH = Math.min(SCREEN_WIDTH * 0.38, 140)
-const CONTAINER_PADDING_H = Math.max(
-	spacing.sm,
-	Math.min(spacing.md, SCREEN_WIDTH * 0.03),
-)
-const CONTAINER_PADDING_V =
-	Platform.select({ ios: spacing.md, android: spacing.sm }) ?? spacing.md
+const INPUT_HEIGHT_BASE = Platform.select({ ios: 36, android: 34 }) ?? 36
 const ROW_GAP = Platform.select({ ios: spacing.xs, android: 4 }) ?? spacing.xs
 
 interface RoomBottomBarProps {
@@ -55,6 +47,8 @@ interface RoomBottomBarProps {
 	userRole?: RoomPlayUserRole
 	/** When set (live stream), use stream API for mute/unmute. */
 	streamIdForMute?: string
+	/** Called when user picks an emoji in the picker (e.g. to show on seat avatar). */
+	onEmojiPicked?: (emojiId: string) => void
 }
 
 export function RoomBottomBar({
@@ -71,12 +65,24 @@ export function RoomBottomBar({
 	onTakeFirstAvailableSeat,
 	userRole,
 	streamIdForMute,
+	onEmojiPicked,
 }: RoomBottomBarProps) {
+	const { width: screenWidth } = useWindowDimensions()
 	const [text, setText] = useState('')
 	const [emojiVisible, setEmojiVisible] = useState(false)
 	const [roomPlayVisible, setRoomPlayVisible] = useState(false)
 	const [giftOverlayVisible, setGiftOverlayVisible] = useState(false)
 	const [messageInboxVisible, setMessageInboxVisible] = useState(false)
+
+	// Responsive: smaller buttons and input on narrow screens so bar never overflows
+	const inputHeight = Math.min(INPUT_HEIGHT_BASE, Math.max(30, Math.floor(screenWidth * 0.09)))
+	const inputMaxWidth = Math.min(screenWidth * 0.38, 140)
+	const containerPaddingH = Math.max(spacing.sm, Math.min(spacing.md, screenWidth * 0.03))
+	const containerPaddingV = Platform.select({ ios: spacing.md, android: spacing.sm }) ?? spacing.md
+	const actionIconSize = Math.min(24, Math.max(20, Math.floor(screenWidth * 0.055)))
+	const muteIconSize = Math.min(28, Math.max(24, Math.floor(screenWidth * 0.065)))
+	const iconBtnPadding = Platform.select({ ios: 2, android: 4 }) ?? 2
+	const iconBtnMinWidth = actionIconSize + 6
 
 	const handleRoomPlayOpen = () => setRoomPlayVisible(true)
 	const handleRoomPlayClose = () => setRoomPlayVisible(false)
@@ -91,22 +97,34 @@ export function RoomBottomBar({
 		setEmojiVisible(false)
 	}, [text, onSend])
 
-	const handleEmojiSelect = useCallback((_placeholder: string) => {
-		// Preview-only: emoji selection does not modify input text.
-	}, [])
+	const handleEmojiSelect = useCallback((_placeholder: string) => {}, [])
 
 	const dynamicStyles = useMemo(
 		() => ({
 			container: {
-				paddingHorizontal: CONTAINER_PADDING_H,
-				paddingVertical: CONTAINER_PADDING_V,
+				paddingHorizontal: containerPaddingH,
+				paddingVertical: containerPaddingV,
 				gap: ROW_GAP,
+				minHeight: inputHeight + 2 * 8,
 			},
 			inputContainer: {
-				maxWidth: INPUT_MAX_WIDTH,
+				height: inputHeight,
+				maxWidth: inputMaxWidth,
+				borderRadius: inputHeight / 2,
+			},
+			iconBtn: {
+				padding: iconBtnPadding,
+				minWidth: iconBtnMinWidth,
 			},
 		}),
-		[],
+		[
+			containerPaddingH,
+			containerPaddingV,
+			inputHeight,
+			inputMaxWidth,
+			iconBtnPadding,
+			iconBtnMinWidth,
+		],
 	)
 
 	return (
@@ -119,9 +137,9 @@ export function RoomBottomBar({
 						hitSlop={8}
 					>
 						{isMuted ? (
-							<MicMutedIcon width={28} height={28} />
+							<MicMutedIcon width={muteIconSize} height={muteIconSize} />
 						) : (
-							<MicSpeakIcon width={28} height={28} />
+							<MicSpeakIcon width={muteIconSize} height={muteIconSize} />
 						)}
 					</Pressable>
 				) : onTakeFirstAvailableSeat ? (
@@ -139,9 +157,9 @@ export function RoomBottomBar({
 						hitSlop={8}
 					>
 						{isMuted ? (
-							<MicMutedIcon width={28} height={28} />
+							<MicMutedIcon width={muteIconSize} height={muteIconSize} />
 						) : (
-							<MicSpeakIcon width={28} height={28} />
+							<MicSpeakIcon width={muteIconSize} height={muteIconSize} />
 						)}
 					</Pressable>
 				)}
@@ -170,22 +188,22 @@ export function RoomBottomBar({
 			</View>
 
 			<View style={styles.actionsRow}>
-				<Pressable style={styles.iconBtn}>
+				<Pressable style={[styles.iconBtn, dynamicStyles.iconBtn]}>
 					<AppIcon />
 				</Pressable>
 				<Pressable
-					style={styles.iconBtn}
+					style={[styles.iconBtn, dynamicStyles.iconBtn]}
 					onPress={() => onRoomPKRandomMatch?.(0)}
 				>
 					<PkIconChat />
 				</Pressable>
-				<Pressable style={styles.iconBtn} onPress={handleRoomPlayOpen}>
+				<Pressable style={[styles.iconBtn, dynamicStyles.iconBtn]} onPress={handleRoomPlayOpen}>
 					<ConsoleIcon />
 				</Pressable>
-				<Pressable style={styles.iconBtn}>
+				<Pressable style={[styles.iconBtn, dynamicStyles.iconBtn]}>
 					<ChatMessageIcon />
 				</Pressable>
-				<Pressable style={styles.iconBtn} onPress={handleGiftOverlayOpen}>
+				<Pressable style={[styles.iconBtn, dynamicStyles.iconBtn]} onPress={handleGiftOverlayOpen}>
 					<PrizeIcon />
 				</Pressable>
 			</View>
@@ -213,6 +231,7 @@ export function RoomBottomBar({
 			<EmojiPickerOverlay
 				visible={emojiVisible}
 				onEmojiSelect={handleEmojiSelect}
+				onEmojiPicked={onEmojiPicked}
 				onClose={() => setEmojiVisible(false)}
 			/>
 		</View>
@@ -223,7 +242,6 @@ const styles = StyleSheet.create({
 	container: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		minHeight: INPUT_HEIGHT + 2 * 8,
 	},
 	chairIconWrap: {
 		flexShrink: 0,
@@ -239,9 +257,7 @@ const styles = StyleSheet.create({
 		backgroundColor: 'rgba(80, 80, 80, 0.6)',
 	},
 	inputContainer: {
-		height: INPUT_HEIGHT,
 		backgroundColor: 'rgba(80, 80, 80, 0.5)',
-		borderRadius: INPUT_HEIGHT / 2,
 		borderWidth: 1,
 		borderColor: '#fff',
 		justifyContent: 'space-between',
@@ -274,8 +290,6 @@ const styles = StyleSheet.create({
 		gap: ROW_GAP,
 	},
 	iconBtn: {
-		padding: Platform.select({ ios: 2, android: 4 }) ?? 2,
-		minWidth: spacing.icon.medium + 4,
 		alignItems: 'center',
 		justifyContent: 'center',
 	},
@@ -304,8 +318,8 @@ const styles = StyleSheet.create({
 		backgroundColor: '#6366F1',
 	},
 	giftPlaceholder: {
-		width: INPUT_HEIGHT,
-		height: INPUT_HEIGHT,
+		width: INPUT_HEIGHT_BASE,
+		height: INPUT_HEIGHT_BASE,
 		borderRadius: spacing.sm,
 		backgroundColor: '#EC4899',
 	},

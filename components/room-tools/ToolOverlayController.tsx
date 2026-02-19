@@ -35,7 +35,7 @@ interface ToolOverlayControllerProps {
 	onCall?: (userId: string) => void
 	onSendMessage?: (message: string, userId: string) => void
 	roomId?: string
-	/** When set (live stream), use stream API for mute/unmute and music. */
+
 	streamIdForMute?: string
 }
 

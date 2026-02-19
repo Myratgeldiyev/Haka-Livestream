@@ -2,18 +2,19 @@ import { pickImageFromGallery } from '@/hooks/image-picker-from-gallery'
 import { useLiveChatStore } from '@/store/liveChat.store'
 import { useLiveStreamStore } from '@/store/liveStream.store'
 import React from 'react'
-import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native'
+import {
+	ScrollView,
+	StyleSheet,
+	Text,
+	View,
+	useWindowDimensions,
+} from 'react-native'
 import LuckyBagIcon from '../ui/icons/live-stream/LuckyBagIcon'
 import BattleRoomPlay from '../ui/icons/room-play/battleRoomPlay'
 import ConsoleRoomPlay from '../ui/icons/room-play/consoleRoomPlay'
 import FireRoomPlay from '../ui/icons/room-play/FireRoomPlay'
 import PkRoomPlay from '../ui/icons/room-play/pkRoomPlay'
-import {
-	COLORS,
-	GRID_CELL_SIZE,
-	HORIZONTAL_PADDING,
-	ITEM_GAP,
-} from './room-play-styles'
+import { COLORS, getGridSizes } from './room-play-styles'
 import type {
 	RoomPlayContentProps,
 	RoomPlayItemData,
@@ -21,9 +22,6 @@ import type {
 	RoomPlayUserRole,
 } from './room-play.types'
 import { RoomPlayItem } from './RoomPlayItem'
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window')
-const SECTION_MARGIN = SCREEN_WIDTH * 0.05
 
 const MOCK_SECTIONS: RoomPlaySection[] = [
 	{
@@ -111,13 +109,15 @@ function GridRow({
 	items,
 	onItemSelect,
 	showBackground,
+	gridRowStyle,
 }: {
 	items: RoomPlayItemData[]
 	onItemSelect?: (item: RoomPlayItemData) => void
 	showBackground?: boolean
+	gridRowStyle?: { gap: number; width: number }
 }) {
 	return (
-		<View style={styles.gridRow}>
+		<View style={[styles.gridRow, gridRowStyle]}>
 			{items.map(item => (
 				<RoomPlayItem
 					key={item.id}
@@ -133,9 +133,17 @@ function GridRow({
 function Section({
 	section,
 	onItemSelect,
+	gridRowStyle,
+	gridStyle,
+	sectionMargin,
+	sectionTitleStyle,
 }: {
 	section: RoomPlaySection
 	onItemSelect?: (item: RoomPlayItemData) => void
+	gridRowStyle?: { gap: number; width: number }
+	gridStyle?: { gap: number }
+	sectionMargin?: number
+	sectionTitleStyle?: { fontSize: number; marginBottom: number }
 }) {
 	const rows: RoomPlayItemData[][] = []
 	for (let i = 0; i < section.items.length; i += 4) {
@@ -143,17 +151,18 @@ function Section({
 	}
 
 	return (
-		<View style={styles.section}>
+		<View style={[styles.section, sectionMargin != null && { marginBottom: sectionMargin }]}>
 			{section.title && (
-				<Text style={styles.sectionTitle}>{section.title}</Text>
+				<Text style={[styles.sectionTitle, sectionTitleStyle]}>{section.title}</Text>
 			)}
-			<View style={styles.grid}>
+			<View style={[styles.grid, gridStyle]}>
 				{rows.map((rowItems, index) => (
 					<GridRow
 						key={`${section.id}-row-${index}`}
 						items={rowItems}
 						onItemSelect={onItemSelect}
 						showBackground={section.id !== 'room-play'}
+						gridRowStyle={gridRowStyle}
 					/>
 				))}
 			</View>
@@ -169,6 +178,24 @@ export function RoomPlayContent({
 	userRoleOverride,
 	streamIdForMute,
 }: RoomPlayContentProps) {
+	const { width: screenWidth } = useWindowDimensions()
+	const { cellSize, horizontalPadding, itemGap } = getGridSizes(screenWidth)
+	const gridRowStyle = {
+		gap: itemGap,
+		width: cellSize * 4 + itemGap * 3,
+	}
+	const scrollContentStyle = {
+		paddingHorizontal: horizontalPadding,
+		paddingTop: screenWidth * 0.04,
+		paddingBottom: screenWidth * 0.08,
+	}
+	const sectionMargin = screenWidth * 0.05
+	const sectionTitleStyle = {
+		fontSize: Math.max(16, screenWidth * 0.045),
+		marginBottom: screenWidth * 0.035,
+	}
+	const gridGapStyle = { gap: screenWidth * 0.04 }
+
 	const chatIsMuted = useLiveChatStore(s => s.isMuted)
 	const streamMuted = useLiveStreamStore(s => s.streamMuted)
 	const isMuted = streamIdForMute ? streamMuted : chatIsMuted
@@ -326,7 +353,7 @@ export function RoomPlayContent({
 	return (
 		<ScrollView
 			style={styles.container}
-			contentContainerStyle={styles.scrollContent}
+			contentContainerStyle={[styles.scrollContent, scrollContentStyle]}
 			showsVerticalScrollIndicator={false}
 		>
 			{displaySections.map(section => (
@@ -334,6 +361,10 @@ export function RoomPlayContent({
 					key={section.id}
 					section={section}
 					onItemSelect={handleItemSelect}
+					gridRowStyle={gridRowStyle}
+					gridStyle={gridGapStyle}
+					sectionMargin={sectionMargin}
+					sectionTitleStyle={sectionTitleStyle}
 				/>
 			))}
 		</ScrollView>
@@ -344,28 +375,16 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 	},
-	scrollContent: {
-		paddingHorizontal: HORIZONTAL_PADDING,
-		paddingTop: SCREEN_WIDTH * 0.04,
-		paddingBottom: SCREEN_WIDTH * 0.08,
-	},
-	section: {
-		marginBottom: SECTION_MARGIN,
-	},
+	scrollContent: {},
+	section: {},
 	sectionTitle: {
-		fontSize: Math.max(16, SCREEN_WIDTH * 0.045),
 		fontWeight: '700',
 		color: COLORS.sectionTitle,
-		marginBottom: SCREEN_WIDTH * 0.035,
 	},
-	grid: {
-		gap: SCREEN_WIDTH * 0.04,
-	},
+	grid: {},
 	gridRow: {
 		flexDirection: 'row',
 		justifyContent: 'flex-start',
-		gap: ITEM_GAP,
 		flexWrap: 'nowrap',
-		width: GRID_CELL_SIZE * 4 + ITEM_GAP * 3,
 	},
 })

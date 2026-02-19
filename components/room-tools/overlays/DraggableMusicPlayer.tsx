@@ -41,7 +41,7 @@ export function DraggableMusicPlayer({
 	const dragEnabledRef = useRef(false)
 	const touchStartTimeRef = useRef(0)
 	const savedOffsetBeforeCollapseRef = useRef<{ x: number; y: number } | null>(
-		null
+		null,
 	)
 	const wasCollapsedRef = useRef(false)
 	const [cardSize, setCardSize] = useState({ width: 0, height: 0 })
@@ -80,7 +80,7 @@ export function DraggableMusicPlayer({
 		const x = clamp(
 			(SCREEN_WIDTH - cardSize.width) / 2,
 			bounds.minX,
-			bounds.maxX
+			bounds.maxX,
 		)
 		const y = clamp(bounds.maxY, bounds.minY, bounds.maxY)
 		offset.x = x
@@ -106,7 +106,7 @@ export function DraggableMusicPlayer({
 			const x = clamp(
 				(SCREEN_WIDTH - cardSize.width) / 2,
 				bounds.minX,
-				bounds.maxX
+				bounds.maxX,
 			)
 			const y = clamp(bounds.maxY, bounds.minY, bounds.maxY)
 			offset.x = x
@@ -138,17 +138,23 @@ export function DraggableMusicPlayer({
 		}
 	}, [isCollapsed, cardSize.width, cardSize.height])
 
+	const DRAG_MOVE_THRESHOLD = 10
+
 	const panResponder = useMemo(
 		() =>
 			PanResponder.create({
 				onStartShouldSetPanResponder: () => false,
-				onMoveShouldSetPanResponder: (_evt, _gestureState) => {
+				onMoveShouldSetPanResponder: (_evt, gestureState) => {
+					if (dragEnabledRef.current) return true
 					const elapsed = Date.now() - touchStartTimeRef.current
-					if (elapsed > 220) {
+					const moved =
+						Math.abs(gestureState.dx) > DRAG_MOVE_THRESHOLD ||
+						Math.abs(gestureState.dy) > DRAG_MOVE_THRESHOLD
+					if (elapsed > 220 && moved) {
 						dragEnabledRef.current = true
 						return true
 					}
-					return dragEnabledRef.current
+					return false
 				},
 				onPanResponderGrant: () => {
 					touchStartTimeRef.current = Date.now()
@@ -157,7 +163,7 @@ export function DraggableMusicPlayer({
 				},
 				onPanResponderMove: Animated.event(
 					[null, { dx: position.x, dy: position.y }],
-					{ useNativeDriver: false }
+					{ useNativeDriver: false },
 				),
 				onPanResponderRelease: (_evt, gesture) => {
 					position.flattenOffset()
@@ -184,7 +190,7 @@ export function DraggableMusicPlayer({
 					dragEnabledRef.current = false
 				},
 			}),
-		[bounds.maxX, bounds.maxY, bounds.minX, bounds.minY, position]
+		[bounds.maxX, bounds.maxY, bounds.minX, bounds.minY, position],
 	)
 
 	const DRAG_MIN_MS = 260
@@ -230,7 +236,7 @@ export function DraggableMusicPlayer({
 					dragEnabledRef.current = false
 				},
 			}),
-		[bounds.maxX, bounds.maxY, bounds.minX, bounds.minY, position]
+		[bounds.maxX, bounds.maxY, bounds.minX, bounds.minY, position],
 	)
 
 	const handleCollapse = useCallback(() => {
@@ -290,14 +296,17 @@ export function DraggableMusicPlayer({
 							{...panResponder.panHandlers}
 						/>
 					)}
-					<View
-						style={isCollapsed ? styles.collapsedWrapper : undefined}
-						onLayout={!isCollapsed ? ensureInitialPosition : undefined}
-						{...(isCollapsed
-							? collapsedPanResponder.panHandlers
-							: panResponder.panHandlers)}
-					>
-						<MusicPlayerOverlay
+				<View
+					style={isCollapsed ? styles.collapsedWrapper : undefined}
+					onLayout={!isCollapsed ? ensureInitialPosition : undefined}
+					onTouchStart={() => {
+						touchStartTimeRef.current = Date.now()
+					}}
+					{...(isCollapsed
+						? collapsedPanResponder.panHandlers
+						: panResponder.panHandlers)}
+				>
+					<MusicPlayerOverlay
 							visible
 							trackName={trackName}
 							trackUri={trackUri}
