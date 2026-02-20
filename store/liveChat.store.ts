@@ -5,6 +5,7 @@ import {
 	EnterRoomResponse,
 	KickOutRequest,
 	RemoveAdminRequest,
+	RoomFollowerItem,
 	RoomResponse,
 	RoomRole,
 	RoomUsers,
@@ -15,7 +16,7 @@ import {
 import { roomsApi } from '@/api/live-chat/rooms.api'
 import type { LiveStreamDetailsResponse } from '@/api/live-stream/lives.types'
 import {
-	joinChannel,
+	joinChannelForVoice,
 	leaveChannel,
 	muteLocalAudio,
 	resetAgoraEngine,
@@ -98,6 +99,10 @@ import { create } from 'zustand'
 	myChatRoom: LiveStreamDetailsResponse | null
 	/** Chat rooms the current user is following. */
 	followingRooms: LiveStreamDetailsResponse[]
+	/** Followers of a chat room (by roomId). */
+	roomFollowers: RoomFollowerItem[]
+	roomFollowersLoading: boolean
+	fetchRoomFollowers: (roomId: string) => Promise<void>
 	followRoom: (roomId: string) => Promise<import('@/api/live-chat/rooms.api').FollowRoomResponse>
 	unfollowRoom: (roomId: string) => Promise<unknown>
 	getMyChatRoom: () => Promise<LiveStreamDetailsResponse>
@@ -132,6 +137,22 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 	minimizedRoomTitle: null,
 	myChatRoom: null,
 	followingRooms: [],
+	roomFollowers: [],
+	roomFollowersLoading: false,
+
+	fetchRoomFollowers: async (roomId: string) => {
+		try {
+			set({ roomFollowersLoading: true, error: null })
+			await initializeAuth()
+			const list = await roomsApi.getRoomFollowers(roomId)
+			set({ roomFollowers: list })
+		} catch (e: any) {
+			set({ error: e.message })
+			throw e
+		} finally {
+			set({ roomFollowersLoading: false })
+		}
+	},
 
 	setRoomSeatCount: (count: number) => set({ roomSeatCount: count }),
 	setMinimized: (roomId: string, imageUrl: string, title?: string) =>
@@ -268,7 +289,10 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 			set({ isConnecting: true, error: null })
 
 			const permission = await Audio.requestPermissionsAsync()
-			if (!permission.granted) {
+			if (permission.granted) {
+				console.log('[liveChat.store] Microphone permission granted (createAndJoinRoom)')
+			} else {
+				console.log('[liveChat.store] Microphone permission denied (createAndJoinRoom)')
 				throw new Error('Microphone permission denied')
 			}
 
@@ -360,22 +384,40 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 			})
 
 			const appId = process.env.EXPO_PUBLIC_AGORA_APP_ID!
-			await joinChannelPromise(appId, room.rtc_token, room.channel_name, uid)
+			console.log('[liveChat.store] createAndJoinRoom: calling joinChannelForVoice', {
+				channelName: room.channel_name,
+				uid,
+				roomId: room.id,
+			})
+			await joinChannelForVoicePromise(
+				appId,
+				room.rtc_token,
+				room.channel_name,
+				uid,
+			)
 
 			set({ isJoined: true })
 
 			return room.id
-		} catch (e: any) {
-			set({ error: e.message })
+		} catch (e: unknown) {
+			set({ error: e instanceof Error ? e.message : String(e) })
 			throw e
 		} finally {
 			set({ isConnecting: false })
 		}
 	},
 
-	enterRoom: async (roomId: string) => {
+		enterRoom: async (roomId: string) => {
 		try {
 			set({ isConnecting: true, error: null })
+
+			const permission = await Audio.requestPermissionsAsync()
+			if (permission.granted) {
+				console.log('[liveChat.store] Microphone permission granted (enterRoom)')
+			} else {
+				console.log('[liveChat.store] Microphone permission denied (enterRoom)')
+				throw new Error('Microphone permission is required for voice chat')
+			}
 
 			await initializeAuth()
 
@@ -416,11 +458,19 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 			})
 
 			const appId = process.env.EXPO_PUBLIC_AGORA_APP_ID!
-			joinChannelPromise(appId, res.rtc_token, res.channel_name, uid)
+			console.log('[liveChat.store] enterRoom: calling joinChannelForVoice', {
+				channelName: res.channel_name,
+				uid,
+				roomId: res.room.id,
+			})
+			joinChannelForVoicePromise(appId, res.rtc_token, res.channel_name, uid)
 				.then(() => set({ isJoined: true }))
-				.catch((e: any) => set({ error: e?.message }))
-		} catch (e: any) {
-			set({ error: e.message })
+				.catch((e: unknown) =>
+					set({ error: e instanceof Error ? e.message : String(e) }),
+				)
+		} catch (e: unknown) {
+			const message = e instanceof Error ? e.message : String(e)
+			set({ error: message })
 			throw e
 		} finally {
 			set({ isConnecting: false })
@@ -829,13 +879,13 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 	},
 }))
 
-function joinChannelPromise(
+function joinChannelForVoicePromise(
 	appId: string,
 	token: string,
 	channel: string,
 	uid: number,
 ): Promise<void> {
 	return new Promise<void>((resolve, reject) => {
-		joinChannel(appId, token, channel, uid, resolve, reject)
+		joinChannelForVoice(appId, token, channel, uid, resolve, reject)
 	})
 }

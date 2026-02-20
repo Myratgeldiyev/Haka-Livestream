@@ -11,7 +11,7 @@ import {
 	View,
 } from 'react-native'
 import IndiaFlagSquare from '../ui/flags/indiaFlagSquare'
-import { CoinIcon } from '../ui/icons'
+import CoinIcon from '../ui/icons/withdrawal/CoinIcon'
 
 const AVATAR_SIZE = 55
 const FRAME_SIZE = { width: 76, height: 80 }

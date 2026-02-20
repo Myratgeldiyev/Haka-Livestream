@@ -3,8 +3,8 @@ import React from 'react'
 import { StyleSheet, View } from 'react-native'
 
 import { spacing } from '@/constants/spacing'
-import { CoinIcon } from '../ui/icons'
-import CoinComponent from '../ui/icons/Coin2Icon'
+import GoldIcon from '../ui/icons/live-stream/GoldIcon'
+import CoinIcon from '../ui/icons/withdrawal/CoinIcon'
 interface P {
 	top_up?: number
 	withdrawal?: number
@@ -16,7 +16,7 @@ export function WalletSection({ top_up, withdrawal }: P) {
 				bg='#ffe990ff'
 				color='#D1723A'
 				label={top_up}
-				icon={<CoinComponent />}
+				icon={<GoldIcon />}
 				action='Top Up'
 				route='/(main)/top-up-coins'
 			/>

@@ -14,7 +14,7 @@ export const ENDPOINTS = {
 	PROFILE: {
 		MY_PROFILE: 'users/myprofile/',
 		UPDATE_PROFILE_PICTURE: 'users/update/profile-picture/',
-		GET_USER_PROFILE: (userId: string) => `users/${userId}/`,
+		GET_USER_PROFILE: (userId: string) => `users/get-user/${userId}/`,
 	},
 	FOLLOW: {
 		FOLLOW: 'follow/',
@@ -49,6 +49,7 @@ export const ENDPOINTS = {
 		UNFOLLOW_ROOM: (roomId: string) => `voice/unfollow-room/${roomId}/`,
 		GET_MY_CHATROOM: 'voice/get-my-chatroom/',
 		FOLLOWING_ROOMS: 'voice/following-rooms/',
+		ROOM_FOLLOWERS: (roomId: string) => `voice/rooms/${roomId}/room_followers/`,
 	},
 	LIVE_STREAM: {
 		STREAMS: 'video/streams/',

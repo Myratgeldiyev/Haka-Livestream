@@ -1,3 +1,4 @@
+import CoinIcon from '@/components/ui/icons/withdrawal/CoinIcon'
 import { spacing } from '@/constants/spacing'
 import { fontSizes, fontWeights, lineHeights } from '@/constants/typography'
 import React from 'react'
@@ -152,34 +153,10 @@ export function LevelRulesTable() {
 					Recharge with USDT: $x = xxxx from $xxx
 				</Text>
 				<View style={styles.noteIcon}>
-					<CoinIcon size={16} />
+					<CoinIcon size='16' />
 				</View>
 			</View>
 		</View>
-	)
-}
-
-function CoinIcon({ size = 14 }: { size?: number }) {
-	return (
-		<Svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
-			<Circle cx={12} cy={12} r={10} fill='#FFB800' />
-			<Text
-				style={{
-					position: 'absolute',
-					fontSize: size * 0.6,
-					color: '#FFF',
-					fontWeight: '700',
-				}}
-			>
-				$
-			</Text>
-			<Path
-				d='M12 6v1.5M12 16.5V18M9.5 8.5c0-.83.67-1.5 1.5-1.5h1c1.1 0 2 .9 2 2s-.9 2-2 2h-1c-1.1 0-2 .9-2 2s.9 2 2 2h1c.83 0 1.5-.67 1.5-1.5'
-				stroke='#FFF'
-				strokeWidth={1.5}
-				strokeLinecap='round'
-			/>
-		</Svg>
 	)
 }
 
@@ -227,7 +204,7 @@ function SeniorSellerBadge() {
 function SellerBadge() {
 	return (
 		<View style={styles.sellerBadge}>
-			<CoinIcon size={12} />
+			<CoinIcon size='12' />
 			<Text style={styles.sellerBadgeText}>Seller</Text>
 		</View>
 	)

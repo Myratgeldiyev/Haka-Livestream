@@ -1,42 +1,31 @@
+import { resolveImageUrl } from '@/utils/imageUrl'
 import React from 'react'
 import { Image, StyleSheet, Text, View } from 'react-native'
 import type { UserListItemProps } from '../../types/game-ranking'
-import { DiamondLevel } from '../live-stream-start/LevelBadge'
-import FemaleIcon from '../ui/icons/gender-age-icons/femaleIcon'
+import { LevelBadge } from '../ui/LevelBadge'
 import GoldIcon from '../ui/icons/live-stream/GoldIcon'
 import { AVATAR_SIZE, COLORS, FONT_SIZES, SPACING } from './styles'
 
-function AvatarPlaceholder() {
-	return (
-		<Image
-			source={require('../../assets/images/games/room-avatar.png')}
-			style={styles.avatar}
-		/>
-	)
-}
+const AVATAR_PLACEHOLDER = require('../../assets/images/games/room-avatar.png')
 
 export function UserListItem({
 	user,
 	showSpecialBadges = false,
 }: UserListItemProps) {
+	const resolvedUri = resolveImageUrl(user.user.profile_picture)
+	const avatarSource = resolvedUri
+		? { uri: resolvedUri }
+		: AVATAR_PLACEHOLDER
 	return (
 		<View style={styles.container}>
 			<View style={styles.leftSection}>
 				<View style={styles.avatarContainer}>
-					<AvatarPlaceholder />
+					<Image source={avatarSource} style={styles.avatar} />
 				</View>
 				<View style={styles.userInfo}>
 					<Text style={styles.userName}>{user.user.username}</Text>
 					<View style={styles.badgesContainer}>
-						{showSpecialBadges && user && (
-							<>
-								<View style={styles.femaleIcon}>
-									<FemaleIcon />
-								</View>
-								<Image source={require('../../assets/images/cs-rank.png')} />
-							</>
-						)}
-						<DiamondLevel age={35} />
+						{user.user.level != null && <LevelBadge level={user.user.level} />}
 					</View>
 				</View>
 			</View>
@@ -44,8 +33,8 @@ export function UserListItem({
 				{showSpecialBadges && user.user.online_status && (
 					<Image
 						source={
-							user.user.profile_picture
-								? { uri: user.user.profile_picture }
+							resolvedUri
+								? { uri: resolvedUri }
 								: require('../../assets/images/stream-img.png')
 						}
 					/>

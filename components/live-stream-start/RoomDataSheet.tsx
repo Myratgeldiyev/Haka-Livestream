@@ -12,7 +12,7 @@ import {
 	View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { CoinIcon } from '../ui/icons'
+import CoinIcon from '../ui/icons/withdrawal/CoinIcon'
 import { BackArrowIcon } from '../ui/icons/chat'
 import RoomChatIcon from '../ui/icons/live-stream-view/roomChatIcon'
 import RoomLiveIcon from '../ui/icons/live-stream-view/roomLiveIcon'

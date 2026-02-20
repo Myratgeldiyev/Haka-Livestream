@@ -17,6 +17,10 @@ import { DraggableMusicPlayer } from '@/components/room-tools/overlays/Draggable
 import { MusicOverlay } from '@/components/room-tools/overlays/MusicOverlay'
 import { fontSizes, fontWeights } from '@/constants/typography'
 import { useMyProfile } from '@/hooks/profile/useMyProfile'
+import {
+	enableAudioVolumeIndication,
+	setVolumeIndicationCallback,
+} from '@/services/agora/agora.service'
 import { useAuthStore } from '@/store/auth.store'
 import { useLiveChatStore } from '@/store/liveChat.store'
 import type { ChatUser } from '@/types/chat-actions/chat-action.types'
@@ -99,6 +103,9 @@ export default function ChatRoomScreen() {
 	const activeRoom = useLiveChatStore(s => s.activeRoom)
 	const roomSeatCount = useLiveChatStore(s => s.roomSeatCount)
 	const users = useLiveChatStore(s => s.users)
+	const storeUid = useLiveChatStore(s => s.uid)
+	const isJoined = useLiveChatStore(s => s.isJoined)
+	const [speakingUids, setSpeakingUids] = useState<number[]>([])
 	const messages = useLiveChatStore(s => s.messages)
 	const chatStatusText = useLiveChatStore(s => s.chatStatusText)
 	const enterRoom = useLiveChatStore(s => s.enterRoom)
@@ -121,16 +128,40 @@ export default function ChatRoomScreen() {
 	const unfollowRoom = useLiveChatStore(s => s.unfollowRoom)
 
 	const authenticatedUser = useAuthStore(state => state.user)
-	const myUserId = authenticatedUser?.user_id?.toString()
 	const { data: myProfile } = useMyProfile()
+	// Use auth user or fallback to profile so "Take a seat" works when auth store hasn't hydrated yet
+	const currentUserForSeat = useMemo(() => {
+		if (authenticatedUser) {
+			return {
+				id: authenticatedUser.user_id.toString(),
+				username: authenticatedUser.username ?? '',
+				avatar: myProfile?.profile_picture ?? '',
+			}
+		}
+		if (myProfile) {
+			return {
+				id: myProfile.user_id.toString(),
+				username: myProfile.username ?? '',
+				avatar: myProfile.profile_picture ?? '',
+			}
+		}
+		return null
+	}, [authenticatedUser, myProfile])
+	const myUserId = currentUserForSeat?.id ?? authenticatedUser?.user_id?.toString()
 
 	const currentUserRole: RoomPlayUserRole =
-		authenticatedUser?.user_id?.toString() ===
-		activeRoom?.owner?.user_id?.toString()
+		myUserId != null &&
+		activeRoom?.owner?.user_id != null &&
+		String(activeRoom.owner.user_id) === myUserId
 			? 'owner'
 			: 'listener'
 
 	const [isFollowing, setIsFollowing] = useState(false)
+
+	const onlineUsersCount = useMemo(
+		() => users.filter(u => u.user.is_online === true).length,
+		[users],
+	)
 
 	const handleToggleFollowRoom = useCallback(async () => {
 		if (!roomId) return
@@ -221,6 +252,56 @@ export default function ChatRoomScreen() {
 				clearMinimized()
 			}
 		}, [roomId, clearMinimized]),
+	)
+
+	// Agora volume indication: speakingUids = uids with volume > 50; map uid 0 to local user's store uid
+	useEffect(() => {
+		const VOLUME_THRESHOLD = 50
+		const cb = (speakers: { uid: number; volume: number }[]) => {
+			const storeUid = useLiveChatStore.getState().uid
+			const uids = speakers
+				.filter(s => s.volume > VOLUME_THRESHOLD)
+				.map(s => (s.uid === 0 && storeUid != null ? storeUid : s.uid))
+			if (__DEV__ && speakers.length > 0) {
+				console.log('[CHAT_ROOM] onAudioVolumeIndication', {
+					speakers: speakers.map(s => ({ uid: s.uid, volume: s.volume })),
+					storeUid,
+					speakingUids: Array.from(new Set(uids)),
+				})
+			}
+			setSpeakingUids(prev => {
+				const next = new Set(uids)
+				if (
+					prev.length === next.size &&
+					prev.every(u => next.has(u))
+				)
+					return prev
+				return Array.from(next)
+			})
+		}
+		setVolumeIndicationCallback(cb)
+		return () => setVolumeIndicationCallback(null)
+	}, [])
+
+	useEffect(() => {
+		if (!isJoined || !roomId) return
+		const appId = process.env.EXPO_PUBLIC_AGORA_APP_ID
+		if (!appId) return
+		// 200ms interval, smooth 3, reportVad true; call only after join
+		enableAudioVolumeIndication(appId, 200, 3, true).catch(() => {})
+	}, [isJoined, roomId])
+
+	const getIsSpeakingForSeat = useCallback(
+		(seatNumber: number, seat: Seat | undefined): boolean => {
+			if (!seat?.user) return false
+			// Current user: we know our Agora uid from store
+			if (seat.user.id === myUserId && storeUid != null) {
+				return speakingUids.includes(storeUid)
+			}
+			// Remote users: would need seat -> Agora uid map (e.g. from backend room_users with uid)
+			return false
+		},
+		[myUserId, storeUid, speakingUids],
 	)
 
 	useEffect(() => {
@@ -351,8 +432,8 @@ export default function ChatRoomScreen() {
 		const seat = seats[seatNumber]
 		const isOwner =
 			activeRoom?.owner &&
-			authenticatedUser?.user_id?.toString() ===
-				activeRoom.owner.user_id.toString()
+			myUserId != null &&
+			String(activeRoom.owner.user_id) === myUserId
 
 		if (seat.status === 'locked' && !isOwner) {
 			Alert.alert('Notice', 'This seat is locked')
@@ -390,13 +471,12 @@ export default function ChatRoomScreen() {
 			return
 		}
 
-		if (!authenticatedUser) {
+		if (!currentUserForSeat) {
 			Alert.alert('Error', 'User information not available')
 			return
 		}
 
-		const userId = authenticatedUser.user_id.toString()
-		const avatar = myProfile?.profile_picture ?? ''
+		const { id: userId, username, avatar } = currentUserForSeat
 		setSeats(prev => {
 			const updated = { ...prev }
 			Object.keys(updated).forEach(key => {
@@ -412,7 +492,7 @@ export default function ChatRoomScreen() {
 				status: 'unlocked',
 				user: {
 					id: userId,
-					username: authenticatedUser.username || '',
+					username,
 					avatar,
 				},
 			}
@@ -592,7 +672,7 @@ export default function ChatRoomScreen() {
 							/>
 							<TopRightControls
 								roomId={roomId}
-								viewerCount={users.length}
+								viewerCount={onlineUsersCount}
 								onClose={handleClose}
 							/>
 						</View>
@@ -618,6 +698,7 @@ export default function ChatRoomScreen() {
 							onMuteUser={handleMuteUser}
 							onUnmuteUser={handleUnmuteUser}
 							onOccupiedSeatPress={handleOccupiedSeatPress}
+							getIsSpeakingForSeat={getIsSpeakingForSeat}
 						/>
 					</View>
 

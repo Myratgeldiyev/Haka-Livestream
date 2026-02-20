@@ -2,7 +2,7 @@ import { spacing } from '@/constants/spacing'
 import { fontSizes, fontWeights, lineHeights } from '@/constants/typography'
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-import { CoinIcon } from '../ui/icons'
+import CoinIcon from '../ui/icons/withdrawal/CoinIcon'
 import { HOST_CENTRE } from './constants'
 
 interface HostCentreIncomeCardProps {

@@ -46,6 +46,8 @@ export interface RoomUsers {
 		profile_picture: string
 		is_online: boolean
 		online_status: string
+		/** User level from API; used for level badge when present */
+		level?: number
 	}
 	role: 'speaker' | 'listener' | 'owner' | 'admin'
 	joined_at: string
@@ -175,4 +177,22 @@ export interface MuteUnmuteUserRequest {
 export interface MuteUnmuteUserResponse {
 	success: boolean
 	message?: string
+}
+
+/** User object in room_followers response */
+export interface RoomFollowerUser {
+	username: string
+	user_id: number
+	profile_picture: string
+	is_online: boolean
+	online_status: string
+	level: number
+}
+
+/** Single item from GET /voice/rooms/:id/room_followers/ */
+export interface RoomFollowerItem {
+	user: RoomFollowerUser
+	role: string
+	joined_at: string
+	is_muted: boolean
 }

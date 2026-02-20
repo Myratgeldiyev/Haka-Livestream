@@ -9,7 +9,7 @@ import {
 	Text,
 	View,
 } from 'react-native'
-import { CoinIcon } from '../ui/icons'
+import CoinIcon from '../ui/icons/withdrawal/CoinIcon'
 import { PinkDiamond } from './PinkDiamod'
 import { PurpleDiamond } from './PurpleDiamond'
 

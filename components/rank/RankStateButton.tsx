@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient'
 import React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { CoinIcon } from '../ui/icons'
+import CoinIcon from '../ui/icons/withdrawal/CoinIcon'
 import RankLeftArrow from '../ui/icons/rank/RankLeftArrowIcon'
 
 type RankStateButtonProps = {

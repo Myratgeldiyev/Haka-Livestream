@@ -1,5 +1,5 @@
 import { RoomUsers } from '@/api/live-chat/room.types'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { COLORS, FONT_SIZES, SPACING } from './styles'
 import { UserListItem } from './UserListItem'
@@ -9,16 +9,20 @@ interface P {
 }
 
 export function OnlineUsersSection({ data }: P) {
+	const onlineOnly = useMemo(
+		() => data?.filter(u => u.user.is_online === true) ?? [],
+		[data],
+	)
 	return (
 		<View style={styles.container}>
 			<Text style={styles.onlineCountText}>
-				Online User: {data?.length ?? 0}
+				Online User: {onlineOnly.length}
 			</Text>
 			<ScrollView
 				style={styles.scrollView}
 				showsVerticalScrollIndicator={false}
 			>
-				{data?.map((user, index) => (
+				{onlineOnly.map((user, index) => (
 					<UserListItem
 						key={user.user.user_id}
 						user={user}

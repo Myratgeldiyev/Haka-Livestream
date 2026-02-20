@@ -1,7 +1,7 @@
 import { fontSizes, fontWeights, lineHeights } from '@/constants/typography'
 import React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { CoinIcon } from '../ui/icons'
+import CoinIcon from '../ui/icons/withdrawal/CoinIcon'
 import RankInfoIcon from '../ui/icons/rank/RankInfoIcon'
 import { AGENT_DASHBOARD } from './constants'
 

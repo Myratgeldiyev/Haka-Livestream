@@ -61,6 +61,8 @@ interface SeatGridProps {
 	onOccupiedSeatPress?: (user: SeatUser) => void
 	/** When set, the seat with this seatNumber shows the emoji on its avatar for a short time. */
 	seatEmojiBurst?: { seatNumber: number; emojiId: string } | null
+	/** Returns whether the given seat is currently speaking (e.g. from Agora volume indication). */
+	getIsSpeakingForSeat?: (seatNumber: number, seat: Seat | undefined) => boolean
 }
 
 function getRowsForSeatCount(seatCount: number): number[] | null {
@@ -84,6 +86,7 @@ export function SeatGrid({
 	onMuteUser,
 	onUnmuteUser,
 	onOccupiedSeatPress,
+	getIsSpeakingForSeat,
 }: SeatGridProps) {
 	const { width: windowWidth } = useWindowDimensions()
 	const [openSeatNumber, setOpenSeatNumber] = useState<number | null>(null)
@@ -131,7 +134,11 @@ export function SeatGrid({
 	}, [seatCount, _screenId, seatItemSize, windowWidth, rowGap, colGap])
 	// #endregion
 
-	const seatItemProps = {
+	const seatItemProps = (
+		n: number,
+		seat: Seat | undefined,
+		isOpen: boolean,
+	) => ({
 		userRole,
 		iconsOnly,
 		onLock: onLockSeat,
@@ -142,10 +149,11 @@ export function SeatGrid({
 		onMuteUser,
 		onUnmuteUser,
 		onOccupiedSeatPress,
-		isOpen: false,
+		isOpen,
 		onOpenChange: setOpenSeatNumber,
 		itemSize: seatItemSize,
-	}
+		isSpeaking: getIsSpeakingForSeat?.(n, seat) ?? false,
+	})
 
 	if (rowsConfig) {
 		return (
@@ -164,8 +172,7 @@ export function SeatGrid({
 											? seatEmojiBurst.emojiId
 											: undefined
 									}
-									{...seatItemProps}
-									isOpen={openSeatNumber === n}
+									{...seatItemProps(n, seats?.[n], openSeatNumber === n)}
 								/>
 							))}
 						</View>
@@ -189,8 +196,7 @@ export function SeatGrid({
 								: undefined
 						}
 						size={n <= 2 ? 'large' : undefined}
-						{...seatItemProps}
-						isOpen={openSeatNumber === n}
+						{...seatItemProps(n, seats?.[n], openSeatNumber === n)}
 					/>
 				))}
 			</View>

@@ -9,7 +9,7 @@ import {
 	Text,
 	View,
 } from 'react-native'
-import { CoinIcon } from '../ui/icons'
+import CoinIcon from '../ui/icons/withdrawal/CoinIcon'
 
 const FRAME_BY_RANK: Record<1 | 2 | 3, ImageSourcePropType> = {
 	1: require('@/assets/images/rank-2-frame.png'),

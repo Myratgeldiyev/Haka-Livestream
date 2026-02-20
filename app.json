@@ -1,69 +1,70 @@
 {
-	"expo": {
-		"name": "Haka Live",
-		"slug": "haka-live",
-		"version": "1.0.0",
-		"orientation": "portrait",
-		"icon": "./assets/images/new-haka-logo.jpg",
-		"scheme": "hakalive",
-		"userInterfaceStyle": "automatic",
-		"newArchEnabled": true,
-		"splash": {
-			"image": "./assets/images/Splash.png",
-			"resizeMode": "cover",
-			"backgroundColor": "#E6F4FE"
-		},
-		"ios": {
-			"supportsTablet": true,
-			"bundleIdentifier": "com.hakalive.app",
-			"infoPlist": {
-				"ITSAppUsesNonExemptEncryption": false
-			}
-		},
-		"android": {
-			"adaptiveIcon": {
-				"foregroundImage": "./assets/images/new-haka-logo.jpg",
-				"backgroundColor": "#E6F4FE"
-			},
-			"edgeToEdgeEnabled": true,
-			"predictiveBackGestureEnabled": false,
-			"package": "com.hakalive.app",
-			"permissions": [
-				"RECORD_AUDIO",
-				"CAMERA",
-				"MODIFY_AUDIO_SETTINGS",
-				"INTERNET"
-			]
-		},
-		"web": {
-			"output": "static",
-			"favicon": ""
-		},
-		"plugins": [
-			"expo-router",
-			"expo-font",
-			"expo-web-browser",
-			"@react-native-google-signin/google-signin",
-			[
-				"expo-splash-screen",
-				{
-					"backgroundColor": "#E6F4FE",
-					"image": "./assets/images/Splash.png",
-					"imageWidth": 280
-				}
-			]
-		],
-		"experiments": {
-			"typedRoutes": true,
-			"reactCompiler": true
-		},
-		"extra": {
-			"router": {},
-			"eas": {
-				"projectId": "cb311aad-2acf-4084-9c55-5c4bf40ab80f"
-			},
-			"API_URL": "https://wiselabyrinth.pythonanywhere.com/api"
-		},
-		"owner": "haka-team"
-	}
+  "expo": {
+    "name": "Haka Live",
+    "slug": "haka-live",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/new-haka-logo.jpg",
+    "scheme": "hakalive",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/Splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#E6F4FE"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hakalive.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSMicrophoneUsageDescription": "This app uses the microphone for voice chat in live rooms."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/new-haka-logo.jpg",
+        "backgroundColor": "#E6F4FE"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.hakalive.app",
+      "permissions": [
+        "RECORD_AUDIO",
+        "CAMERA",
+        "MODIFY_AUDIO_SETTINGS",
+        "INTERNET"
+      ]
+    },
+    "web": {
+      "output": "static",
+      "favicon": ""
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-web-browser",
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#E6F4FE",
+          "image": "./assets/images/Splash.png",
+          "imageWidth": 280
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "cb311aad-2acf-4084-9c55-5c4bf40ab80f"
+      },
+      "API_URL": "https://wiselabyrinth.pythonanywhere.com/api"
+    },
+    "owner": "haka-team"
+  }
 }

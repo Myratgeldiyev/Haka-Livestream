@@ -10,7 +10,7 @@ import {
 	View,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { CoinIcon } from '../ui/icons'
+import CoinIcon from '../ui/icons/withdrawal/CoinIcon'
 import AgentCoinSellerIcon from '../ui/icons/agent-dashboard/AgentCoinSellerIcon'
 import AgentNotificationIcon from '../ui/icons/agent-dashboard/AgentNotificationIcon'
 import AgentProgressIcon from '../ui/icons/agent-dashboard/AgentProgressIcon'

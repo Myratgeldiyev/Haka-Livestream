@@ -1,6 +1,6 @@
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-import { CoinIcon } from '../ui/icons'
+import CoinIcon from '../ui/icons/withdrawal/CoinIcon'
 import EyeIcon from '../ui/icons/withdrawal/EyeIcon'
 import RightArrowWithIcon from '../ui/icons/withdrawal/RightArrowWithIcon'
 

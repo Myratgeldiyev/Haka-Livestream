@@ -1,3 +1,4 @@
+import Constants from 'expo-constants'
 import {
 	AudioProfileType,
 	AudioScenarioType,
@@ -15,8 +16,17 @@ let remoteVideoStateCallback:
 let localVideoStateCallback:
 	| ((state: number, errorCode: number) => void)
 	| null = null
+export type AudioVolumeInfo = { uid: number; volume: number }
+let volumeIndicationCallback: ((speakers: AudioVolumeInfo[]) => void) | null =
+	null
 
 export const getAgoraEngine = async (appId: string): Promise<IRtcEngine> => {
+	// Agora native SDK does not work in Expo Go; require a dev build
+	if (Constants.appOwnership === 'expo') {
+		throw new Error(
+			'Agora does not work in Expo Go. Use a development build: npx expo run:ios or npx expo run:android',
+		)
+	}
 	if (engine) return engine
 
 	engine = createAgoraRtcEngine()
@@ -62,6 +72,14 @@ function ensureHandlerRegistered(
 			console.log('[Agora] onUserOffline', { uid, reason })
 			remoteVideoStateCallback?.(uid, 0, reason)
 		},
+		onAudioVolumeIndication: (
+			_connection: unknown,
+			speakers: AudioVolumeInfo[],
+			_speakerNumber: number,
+			_totalVolume: number,
+		) => {
+			volumeIndicationCallback?.(speakers)
+		},
 	})
 
 	handlerRegistered = true
@@ -103,6 +121,60 @@ export const joinChannelWithVideo = async (
 }
 
 export const joinChannel = joinChannelWithVideo
+
+// ─── Voice-only: join for voice chat (no video) ───────────────────────────────
+
+/**
+ * Join channel for voice chat only. Use this for voice rooms so the microphone
+ * works without enabling video or camera. Ensures local audio is enabled in onJoinChannelSuccess.
+ */
+export const joinChannelForVoice = async (
+	appId: string,
+	rtcToken: string,
+	channelName: string,
+	uid: number,
+	onJoined: () => void,
+	onError: (err: unknown) => void,
+): Promise<void> => {
+	const eng = await getAgoraEngine(appId)
+
+	console.log('[Agora] joinChannelForVoice called', {
+		channelName,
+		uid,
+		hasToken: !!rtcToken,
+	})
+
+	// 1. Enable audio
+	eng.enableAudio()
+	// 2. Fully disable video for voice-only
+	try {
+		eng.enableLocalVideo(false)
+	} catch (e) {
+		console.warn('[Agora] enableLocalVideo(false) failed:', e)
+	}
+	// 3. Broadcaster so we can publish mic
+	eng.setClientRole(ClientRoleType.ClientRoleBroadcaster)
+
+	const wrappedOnJoined = () => {
+		try {
+			eng.enableLocalAudio(true)
+			console.log('[Agora] enableLocalAudio(true) called after join')
+		} catch (e) {
+			console.warn('[Agora] enableLocalAudio failed in onJoinChannelSuccess:', e)
+		}
+		onJoined()
+	}
+	ensureHandlerRegistered(eng, wrappedOnJoined, onError)
+
+	// 4. Join with voice-only options
+	eng.joinChannel(rtcToken, channelName, uid, {
+		clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+		autoSubscribeAudio: true,
+		autoSubscribeVideo: true,
+		publishMicrophoneTrack: true,
+		publishCameraTrack: false,
+	})
+}
 
 // ─── Viewer: join as audience ─────────────────────────────────────────────────
 
@@ -160,6 +232,7 @@ export const leaveChannel = async (): Promise<void> => {
 	handlerRegistered = false
 	remoteVideoStateCallback = null
 	localVideoStateCallback = null
+	volumeIndicationCallback = null
 }
 
 export const resetAgoraEngine = async (): Promise<void> => {
@@ -176,6 +249,7 @@ export const resetAgoraEngine = async (): Promise<void> => {
 	handlerRegistered = false
 	remoteVideoStateCallback = null
 	localVideoStateCallback = null
+	volumeIndicationCallback = null
 }
 
 // ─── Local video toggle (owner only) ─────────────────────────────────────────
@@ -217,6 +291,26 @@ export const setLocalVideoStateCallback = (
 	callback: ((state: number, errorCode: number) => void) | null,
 ): void => {
 	localVideoStateCallback = callback
+}
+
+export const setVolumeIndicationCallback = (
+	callback: ((speakers: AudioVolumeInfo[]) => void) | null,
+): void => {
+	volumeIndicationCallback = callback
+}
+
+/**
+ * Enable audio volume indication; call after joining the channel.
+ * Interval in ms (e.g. 300), smooth factor (e.g. 3).
+ */
+export const enableAudioVolumeIndication = async (
+	appId: string,
+	interval: number,
+	smooth: number,
+	reportVad = false,
+): Promise<void> => {
+	const eng = await getAgoraEngine(appId)
+	eng.enableAudioVolumeIndication(interval, smooth, reportVad)
 }
 
 export const muteLocalAudio = async (): Promise<void> => {

@@ -3,16 +3,22 @@ import { scaleWidth, screenWidth } from '@/constants/platform'
 import { spacing } from '@/constants/spacing'
 import { fontSizes, fontWeights, lineHeights } from '@/constants/typography'
 import { Image as ExpoImage } from 'expo-image'
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import Animated, {
+	useAnimatedStyle,
+	useSharedValue,
+	withRepeat,
+	withTiming,
+} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import AudioLockIcon from '../ui/icons/chat/AudioLockIcon'
 import InviteChatIcon from '../ui/icons/chat/InviteChatIcon'
 import SeatLockedIcon from '../ui/icons/chat/SeatLockedIcon'
 import SeatTurnOffIcon from '../ui/icons/chat/SeatTurnOffIcon'
 import TakeSeatIcon from '../ui/icons/chat/TakeSeatIcon'
-import AudionsIcon2 from '../ui/icons/live-stream/audionsIcon2'
 import MicMutedIcon from '../ui/icons/live-stream-view/MicMutedIcon'
+import AudionsIcon2 from '../ui/icons/live-stream/audionsIcon2'
 
 type SeatStatus = 'locked' | 'unlocked'
 
@@ -50,6 +56,10 @@ interface SeatItemProps {
 	onOccupiedSeatPress?: (user: SeatUser) => void
 	/** When set, show this emoji on top of the avatar (occupied seat only). */
 	showEmojiId?: string | null
+	/** When true, shows a pulsing glow around the avatar (occupied seat only). */
+	isSpeaking?: boolean
+	/** Glow border and shadow color when isSpeaking. */
+	glowColor?: string
 }
 
 type Position = {
@@ -77,10 +87,42 @@ export function SeatItem({
 	onUnmuteUser,
 	onOccupiedSeatPress,
 	showEmojiId,
+	isSpeaking = false,
+	glowColor = '#4FC3F7',
 }: SeatItemProps) {
 	const insets = useSafeAreaInsets()
 	const wrapperRef = useRef<View>(null)
 	const [position, setPosition] = useState<Position | null>(null)
+	const glowOpacity = useSharedValue(0)
+
+	useEffect(() => {
+		if (__DEV__) {
+			console.log('[SeatItem] isSpeaking changed', { seatNumber, isSpeaking })
+		}
+		if (isSpeaking) {
+			glowOpacity.value = withRepeat(
+				withTiming(1, { duration: 600 }),
+				0,
+				true,
+			)
+		} else {
+			glowOpacity.value = withTiming(0, { duration: 200 })
+		}
+	}, [isSpeaking, glowOpacity, seatNumber])
+
+	const glowAnimatedStyle = useAnimatedStyle(() => ({
+		opacity: glowOpacity.value,
+		shadowOpacity: glowOpacity.value,
+	}))
+	const glowStaticStyle = {
+		borderWidth: 3,
+		borderColor: glowColor,
+		shadowColor: glowColor,
+		shadowOffset: { width: 0, height: 0 } as const,
+		shadowRadius: 12,
+		elevation: 8,
+	}
+
 	const iconSize =
 		itemSize ?? (size === 'large' ? scaleWidth(48) : scaleWidth(44))
 	// #region agent log
@@ -166,43 +208,62 @@ export function SeatItem({
 			<Pressable style={styles.container} onPress={handlePress}>
 				{isOccupied ? (
 					<>
-						<View
-							style={[
-								styles.iconSlot,
-								{ width: iconSize, height: iconSize },
-								(isMuted || showEmojiId) && styles.iconSlotRelative,
-								showEmojiId && styles.iconSlotOverflowHidden,
-							]}
-						>
-							<Image
-								source={{ uri: seat?.user?.avatar ?? '' }}
+						<View style={styles.avatarGlowWrap}>
+							<Animated.View
 								style={[
-									styles.avatar,
-									{ width: iconSize, height: iconSize },
-									showEmojiId && styles.avatarHidden,
+									styles.avatarGlowRing,
+									{
+										width: iconSize + 12,
+										height: iconSize + 12,
+										borderRadius: (iconSize + 12) / 2,
+									},
+									glowStaticStyle,
+									glowAnimatedStyle,
 								]}
-								resizeMode='cover'
+								pointerEvents='none'
 							/>
-							{isMuted && !showEmojiId && (
-								<View style={styles.mutedIconWrap}>
-									<MicMutedIcon width={20} height={20} />
-								</View>
-							)}
-							{showEmojiId && (() => {
-								const emojiSource = getEmojiDisplaySource(showEmojiId)
-								if (emojiSource == null) return null
-								return (
-									<ExpoImage
-										source={emojiSource as any}
-										style={[
-											styles.seatEmojiBubble,
-											styles.seatEmojiBubbleFill,
-											{ borderRadius: iconSize / 2 },
-										]}
-										contentFit='cover'
-									/>
-								)
-							})()}
+							<View
+								style={[
+									styles.iconSlot,
+									{ width: iconSize, height: iconSize },
+									(isMuted || showEmojiId) && styles.iconSlotRelative,
+									showEmojiId && styles.iconSlotOverflowHidden,
+								]}
+							>
+								<Image
+									source={{ uri: seat?.user?.avatar ?? '' }}
+									style={[
+										styles.avatar,
+										{ width: iconSize, height: iconSize },
+										showEmojiId && styles.avatarHidden,
+									]}
+									resizeMode='cover'
+								/>
+								{isMuted && !showEmojiId && (
+									<View style={styles.mutedIconWrap}>
+										<MicMutedIcon width={20} height={20} />
+									</View>
+								)}
+								{showEmojiId &&
+									(() => {
+										const emojiSource = getEmojiDisplaySource(showEmojiId)
+										if (emojiSource == null) return null
+										return (
+											<ExpoImage
+												source={emojiSource as any}
+												style={[
+													styles.seatEmojiBubble,
+													{
+														width: iconSize + 15,
+														height: iconSize + 15,
+														borderRadius: iconSize / 2,
+													},
+												]}
+												contentFit='cover'
+											/>
+										)
+									})()}
+							</View>
 						</View>
 						<Text style={styles.username} numberOfLines={1}>
 							{seat?.user?.username}
@@ -356,6 +417,14 @@ const styles = StyleSheet.create({
 	container: {
 		alignItems: 'center',
 		gap: spacing.sm,
+	},
+	avatarGlowWrap: {
+		position: 'relative',
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	avatarGlowRing: {
+		position: 'absolute',
 	},
 	iconSlotRelative: {
 		position: 'relative',

@@ -13,7 +13,7 @@ import {
 	Text,
 	View,
 } from 'react-native'
-import { CoinIcon } from '../ui/icons'
+import CoinIcon from '../ui/icons/withdrawal/CoinIcon'
 import ChartIconFri from '../ui/icons/invite-friends/chartIconFri'
 import FriDiamondIcon from '../ui/icons/invite-friends/FriDiamondIcon'
 import {

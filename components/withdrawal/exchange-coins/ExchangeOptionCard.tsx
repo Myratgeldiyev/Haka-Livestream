@@ -1,4 +1,4 @@
-import { CoinIcon } from '@/components/ui/icons'
+import CoinIcon from '@/components/ui/icons/withdrawal/CoinIcon'
 import GoldIcon from '@/components/ui/icons/live-stream/GoldIcon'
 import React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'

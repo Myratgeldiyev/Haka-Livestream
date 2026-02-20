@@ -109,50 +109,52 @@ export function DraggableKeepExitOverlay({
 			style={[StyleSheet.absoluteFill, styles.overlayRoot]}
 			pointerEvents='box-none'
 		>
-			<GestureDetector gesture={panGesture}>
-				<Animated.View
-					style={[styles.wrapper, animatedStyle]}
-					onLayout={e => {
-						const { width, height } = e.nativeEvent.layout
-						if (
-							width > 0 &&
-							height > 0 &&
-							(width !== cardSize.width || height !== cardSize.height)
-						) {
-							setCardSize({ width, height })
-						}
-					}}
-				>
-					<View style={styles.container}>
-						<Pressable
-							style={({ pressed }) => [
-								styles.button,
-								pressed && styles.buttonPressed,
-							]}
-							onPress={onKeep}
-							android_ripple={null}
-						>
-							<View style={styles.iconCircle}>
-								<ChatKeepIcon />
-							</View>
-							<Text style={styles.label}>Keep</Text>
-						</Pressable>
-						<Pressable
-							style={({ pressed }) => [
-								styles.button,
-								pressed && styles.buttonPressed,
-							]}
-							onPress={onExit}
-							android_ripple={null}
-						>
-							<View style={styles.iconCircle}>
-								<Ionicons name='power-outline' size={30} color='#FFF' />
-							</View>
-							<Text style={styles.label}>Exit</Text>
-						</Pressable>
-					</View>
-				</Animated.View>
-			</GestureDetector>
+			<Animated.View
+				style={[styles.wrapper, animatedStyle]}
+				onLayout={e => {
+					const { width, height } = e.nativeEvent.layout
+					if (
+						width > 0 &&
+						height > 0 &&
+						(width !== cardSize.width || height !== cardSize.height)
+					) {
+						setCardSize({ width, height })
+					}
+				}}
+			>
+				{/* Pan only on handle so Keep/Exit Pressables receive touches in build */}
+				<GestureDetector gesture={panGesture}>
+					<View style={styles.dragHandle} />
+				</GestureDetector>
+				<View style={styles.container}>
+					<Pressable
+						style={({ pressed }) => [
+							styles.button,
+							pressed && styles.buttonPressed,
+						]}
+						onPress={onKeep}
+						android_ripple={null}
+					>
+						<View style={styles.iconCircle}>
+							<ChatKeepIcon />
+						</View>
+						<Text style={styles.label}>Keep</Text>
+					</Pressable>
+					<Pressable
+						style={({ pressed }) => [
+							styles.button,
+							pressed && styles.buttonPressed,
+						]}
+						onPress={onExit}
+						android_ripple={null}
+					>
+						<View style={styles.iconCircle}>
+							<Ionicons name='power-outline' size={30} color='#FFF' />
+						</View>
+						<Text style={styles.label}>Exit</Text>
+					</Pressable>
+				</View>
+			</Animated.View>
 		</View>
 	)
 }
@@ -168,6 +170,14 @@ const styles = StyleSheet.create({
 		top: 0,
 		width: SCREEN_WIDTH * 0.9,
 		paddingHorizontal: 10,
+	},
+	dragHandle: {
+		position: 'absolute',
+		top: 0,
+		left: 0,
+		right: 0,
+		height: 24,
+		zIndex: 1,
 	},
 	container: {
 		width: '100%',

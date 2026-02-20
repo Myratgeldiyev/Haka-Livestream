@@ -13,6 +13,7 @@ import {
 	MuteUnmuteUserRequest,
 	RemoveAdminRequest,
 	RemoveUserResponse,
+	RoomFollowerItem,
 	RoomResponse,
 	RoomUsers,
 	SendMessageRequest,
@@ -275,6 +276,15 @@ export const roomsApi = {
 
 	getFollowingRooms: async (): Promise<LiveStreamDetailsResponse[]> => {
 		const { data } = await apiClient.get(ENDPOINTS.ROOMS.FOLLOWING_ROOMS)
+		return data
+	},
+
+	getRoomFollowers: async (
+		roomId: string,
+	): Promise<RoomFollowerItem[]> => {
+		const { data } = await apiClient.get(
+			ENDPOINTS.ROOMS.ROOM_FOLLOWERS(roomId),
+		)
 		return data
 	},
 }
