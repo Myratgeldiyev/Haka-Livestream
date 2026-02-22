@@ -50,6 +50,10 @@ export const ENDPOINTS = {
 		GET_MY_CHATROOM: 'voice/get-my-chatroom/',
 		FOLLOWING_ROOMS: 'voice/following-rooms/',
 		ROOM_FOLLOWERS: (roomId: string) => `voice/rooms/${roomId}/room_followers/`,
+		CHANGE_SEAT: (id: string) => `voice/rooms/${id}/change_seat/`,
+		LEAVE_SEAT: (id: string) => `voice/rooms/${id}/leave_seat/`,
+		SET_ROOM_PASSWORD: (id: string) => `voice/rooms/${id}/set_room_password/`,
+		REMOVE_ROOM_PASSWORD: (id: string) => `voice/rooms/${id}/remove_room_password/`,
 	},
 	LIVE_STREAM: {
 		STREAMS: 'video/streams/',
@@ -82,6 +86,10 @@ export const ENDPOINTS = {
 		UNFOLLOW_STREAM: (streamId: string) => `video/unfollow-stream/${streamId}/`,
 		GET_MY_LIVESTREAM: 'video/get-my-livestream/',
 		FOLLOWING_STREAMS: 'video/following-streams/',
+		SET_STREAM_PASSWORD: (id: string) =>
+			`video/streams/${id}/set_stream_password/`,
+		REMOVE_STREAM_PASSWORD: (id: string) =>
+			`video/streams/${id}/remove_stream_password/`,
 	},
 	STREAM_BATTLES: {
 		BASE: 'video/stream-battles/',

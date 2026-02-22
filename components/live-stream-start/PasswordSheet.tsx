@@ -1,5 +1,8 @@
+import { useLiveChatStore } from '@/store/liveChat.store'
+import { useLiveStreamStore } from '@/store/liveStream.store'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
+	Alert,
 	Animated,
 	BackHandler,
 	Dimensions,
@@ -38,12 +41,20 @@ const COLORS = {
 interface PasswordSheetProps {
 	visible: boolean
 	onClose: () => void
+	mode: 'chat' | 'live'
+	streamId?: string
 }
 
-export function PasswordSheet({ visible, onClose }: PasswordSheetProps) {
+export function PasswordSheet({
+	visible,
+	onClose,
+	mode,
+	streamId,
+}: PasswordSheetProps) {
 	const insets = useSafeAreaInsets()
 	const [modalVisible, setModalVisible] = useState(false)
 	const [password, setPassword] = useState('')
+	const [isLocked, setIsLocked] = useState(false)
 	const [activeTab, setActiveTab] = useState<'Profile' | 'Member'>('Member')
 	const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current
 	const overlayOpacity = useRef(new Animated.Value(0)).current
@@ -127,11 +138,45 @@ export function PasswordSheet({ visible, onClose }: PasswordSheetProps) {
 		inputRef.current?.focus()
 	}, [])
 
-	const handleLockRoom = useCallback(() => {
-		if (password.length === PASSWORD_LENGTH) {
-			animateClose()
+	const handleLockRoom = useCallback(async () => {
+		if (password.length !== PASSWORD_LENGTH) return
+		try {
+			if (mode === 'chat') {
+				await useLiveChatStore.getState().setPasswordChatRoom(password)
+			} else {
+				if (!streamId) return
+				await useLiveStreamStore.getState().setPasswordStreamRoom(
+					streamId,
+					password,
+				)
+			}
+			setIsLocked(true)
+		} catch (e: any) {
+			Alert.alert(
+				'Error',
+				e?.message ?? 'Failed to set password. Please try again.',
+			)
 		}
-	}, [password, animateClose])
+	}, [password, mode, streamId])
+
+	const handleRemoveLock = useCallback(async () => {
+		try {
+			if (mode === 'chat') {
+				await useLiveChatStore.getState().removePasswordChatRoom()
+			} else {
+				if (!streamId) return
+				await useLiveStreamStore.getState().removePasswordStreamRoom(
+					streamId,
+				)
+			}
+			setIsLocked(false)
+		} catch (e: any) {
+			Alert.alert(
+				'Error',
+				e?.message ?? 'Failed to remove password. Please try again.',
+			)
+		}
+	}, [mode, streamId])
 
 	const renderPasswordBoxes = () => {
 		const boxes = []
@@ -204,33 +249,61 @@ export function PasswordSheet({ visible, onClose }: PasswordSheetProps) {
 
 					<Text style={styles.title}>Room Password</Text>
 
-					<View style={styles.content}>
-						<Text style={styles.subtitle}>Set the Room Password</Text>
+					{isLocked ? (
+						<>
+							<View style={styles.content}>
+								<Text style={styles.subtitle}>The Room Locked</Text>
+							</View>
+							<View
+								style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}
+							>
+								<Pressable
+									style={styles.lockButton}
+									onPress={handleRemoveLock}
+								>
+									<Text style={styles.lockButtonText}>Remove Lock</Text>
+								</Pressable>
+							</View>
+						</>
+					) : (
+						<>
+							<View style={styles.content}>
+								<Text style={styles.subtitle}>Set the Room Password</Text>
 
-						<View style={styles.inputContainer}>{renderPasswordBoxes()}</View>
+								<View style={styles.inputContainer}>
+									{renderPasswordBoxes()}
+								</View>
 
-						<TextInput
-							ref={inputRef}
-							style={styles.hiddenInput}
-							value={password}
-							onChangeText={handlePasswordChange}
-							keyboardType='number-pad'
-							maxLength={PASSWORD_LENGTH}
-							autoFocus={false}
-						/>
-					</View>
+								<TextInput
+									ref={inputRef}
+									style={styles.hiddenInput}
+									value={password}
+									onChangeText={handlePasswordChange}
+									keyboardType='number-pad'
+									maxLength={PASSWORD_LENGTH}
+									autoFocus={false}
+								/>
+							</View>
 
-					<View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
-						<Pressable
-							style={[
-								styles.lockButton,
-								password.length < PASSWORD_LENGTH && styles.lockButtonDisabled,
-							]}
-							onPress={handleLockRoom}
-						>
-							<Text style={styles.lockButtonText}>Lock room</Text>
-						</Pressable>
-					</View>
+							<View
+								style={[
+									styles.footer,
+									{ paddingBottom: insets.bottom + 16 },
+								]}
+							>
+								<Pressable
+									style={[
+										styles.lockButton,
+										password.length < PASSWORD_LENGTH &&
+											styles.lockButtonDisabled,
+									]}
+									onPress={handleLockRoom}
+								>
+									<Text style={styles.lockButtonText}>Lock room</Text>
+								</Pressable>
+							</View>
+						</>
+					)}
 				</Animated.View>
 			</View>
 		</Modal>

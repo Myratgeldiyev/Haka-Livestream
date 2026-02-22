@@ -4,16 +4,20 @@ import { ENDPOINTS } from '../endpoints'
 import {
 	AddUserAsAdminRequest,
 	AddUserAsAdminResponse,
+	ChangeSeatChatRoomResponse,
+	ChangeSeatRequest,
 	CreateRoomRequest,
 	CreateRoomResponse,
 	EnterRoomResponse,
 	GetMessagesResponse,
 	KickOutRequest,
 	KickOutResponse,
+	LeaveSeatRequest,
 	MuteUnmuteUserRequest,
 	RemoveAdminRequest,
 	RemoveUserResponse,
 	RoomFollowerItem,
+	SetRoomPasswordRequest,
 	RoomResponse,
 	RoomUsers,
 	SendMessageRequest,
@@ -286,5 +290,73 @@ export const roomsApi = {
 			ENDPOINTS.ROOMS.ROOM_FOLLOWERS(roomId),
 		)
 		return data
+	},
+
+	changeSeatChatRoom: async (
+		roomId: string,
+		payload: ChangeSeatRequest,
+	): Promise<ChangeSeatChatRoomResponse> => {
+		const { data } = await apiClient.post(
+			ENDPOINTS.ROOMS.CHANGE_SEAT(roomId),
+			payload,
+		)
+		return data
+	},
+
+	leaveSeatChatRoom: async (
+		roomId: string,
+		payload: LeaveSeatRequest,
+	): Promise<void> => {
+		await apiClient.post(ENDPOINTS.ROOMS.LEAVE_SEAT(roomId), payload)
+	},
+
+	setPasswordChatRoom: async (
+		roomId: string,
+		payload: SetRoomPasswordRequest,
+	): Promise<void> => {
+		const path = ENDPOINTS.ROOMS.SET_ROOM_PASSWORD(roomId)
+		const baseURL = (apiClient.defaults.baseURL ?? '').replace(/\/+$/, '')
+		const fullUrl = `${baseURL}/${path}`
+		console.log('[rooms.api] setPasswordChatRoom', {
+			roomId,
+			roomIdType: typeof roomId,
+			path,
+			fullUrl,
+			payloadKeys: Object.keys(payload),
+		})
+		try {
+			await apiClient.post(path, payload)
+			console.log('[rooms.api] setPasswordChatRoom success')
+		} catch (error: any) {
+			console.log('[rooms.api] setPasswordChatRoom error', {
+				status: error?.response?.status,
+				statusText: error?.response?.statusText,
+				data: error?.response?.data,
+				requestUrl: error?.config?.url,
+				requestBaseURL: error?.config?.baseURL,
+				requestMethod: error?.config?.method,
+				message: error?.message,
+			})
+			throw error
+		}
+	},
+
+	removePasswordChatRoom: async (roomId: string): Promise<void> => {
+		const path = ENDPOINTS.ROOMS.REMOVE_ROOM_PASSWORD(roomId)
+		console.log('[rooms.api] removePasswordChatRoom', {
+			roomId,
+			path,
+		})
+		try {
+			await apiClient.post(path)
+			console.log('[rooms.api] removePasswordChatRoom success')
+		} catch (error: any) {
+			console.log('[rooms.api] removePasswordChatRoom error', {
+				status: error?.response?.status,
+				requestUrl: error?.config?.url,
+				data: error?.response?.data,
+			})
+			throw error
+		}
 	},
 }

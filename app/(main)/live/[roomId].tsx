@@ -655,6 +655,7 @@ export default function LiveRoomScreen() {
 											userRole={userRole}
 											isFollowing={isFollowing}
 											onToggleFollow={handleToggleFollowStream}
+											passwordContextMode="live"
 										/>
 										<TopRightControls
 											roomId={isStreamMode ? '' : (roomId ?? '')}
@@ -802,6 +803,7 @@ export default function LiveRoomScreen() {
 									})()}
 									onEditPress={() => setEditVisible(true)}
 									userRole={userRole}
+									passwordContextMode="live"
 								/>
 								<TopRightControls
 									roomId={isStreamMode ? '' : (roomId ?? '')}

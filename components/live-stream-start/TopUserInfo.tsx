@@ -13,12 +13,16 @@ import FollowRoomIcon from '../ui/icons/chat/FollowRoomIcon'
 import { CenterBadge } from './CenterBadge'
 import { TopUserInfoSheet } from './TopUserInfoSheet'
 
+export type PasswordApiContext = 'chat' | 'live'
+
 interface TopUserInfoProps {
 	data: RoomResponse | null
 	onEditPress: () => void
 	userRole?: RoomPlayUserRole
 	isFollowing?: boolean
 	onToggleFollow?: () => void
+	/** Use 'chat' on chat/[roomId], 'live' on live/[roomId] so password API uses correct backend. */
+	passwordContextMode?: PasswordApiContext
 }
 
 export function TopUserInfo({
@@ -27,6 +31,7 @@ export function TopUserInfo({
 	userRole,
 	isFollowing,
 	onToggleFollow,
+	passwordContextMode,
 }: TopUserInfoProps) {
 	const [sheetVisible, setSheetVisible] = useState(false)
 
@@ -85,6 +90,7 @@ export function TopUserInfo({
 				onClose={handleClose}
 				data={data}
 				userRoleOverride={userRole}
+				passwordContextMode={passwordContextMode}
 			/>
 		</>
 	)

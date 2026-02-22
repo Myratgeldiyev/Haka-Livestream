@@ -10,6 +10,7 @@ import {
 	LiveStreamResponse,
 	NearbLiveStreamsResponse,
 	SendStreamMessageRequest,
+	SetStreamPasswordRequest,
 	StartStreamRequest,
 	StreamBattleDetailsResponse,
 	ToggleVideoBody,
@@ -267,5 +268,21 @@ export const livesApi = {
 			ENDPOINTS.LIVE_STREAM.FOLLOWING_STREAMS,
 		)
 		return data
+	},
+
+	setPasswordStreamRoom: async (
+		streamId: string,
+		payload: SetStreamPasswordRequest,
+	): Promise<void> => {
+		await apiClient.post(
+			ENDPOINTS.LIVE_STREAM.SET_STREAM_PASSWORD(streamId),
+			payload,
+		)
+	},
+
+	removePasswordStreamRoom: async (streamId: string): Promise<void> => {
+		await apiClient.post(
+			ENDPOINTS.LIVE_STREAM.REMOVE_STREAM_PASSWORD(streamId),
+		)
 	},
 }

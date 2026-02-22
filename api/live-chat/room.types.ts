@@ -96,6 +96,12 @@ export interface RemoveUserResponse {
 	success: boolean
 	message?: string
 }
+
+/** Request body for POST /voice/rooms/:id/set_room_password/ (room owners only) */
+export interface SetRoomPasswordRequest {
+	room_password: string
+}
+
 export interface ChatMessageUser {
 	username: string | null
 	user_id: number
@@ -140,6 +146,27 @@ export interface GetMessagesResponse {
 	}
 	content: string
 	created_at: string
+}
+
+/** Request body for POST /voice/rooms/:id/change_seat/ */
+export interface ChangeSeatRequest {
+	seat_number: string
+}
+
+/** Response from POST /voice/rooms/:id/change_seat/ */
+export interface ChangeSeatChatRoomResponse {
+	agora_channel_name: string
+	title: string
+	display_id: number
+	description: string
+	owner: {
+		level: number
+	}
+}
+
+/** Request body for POST /voice/rooms/:id/leave_seat/ */
+export interface LeaveSeatRequest {
+	seat_number: string
 }
 
 export interface KickOutRequest {

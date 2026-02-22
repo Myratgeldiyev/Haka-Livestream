@@ -182,12 +182,16 @@ const SPACING = {
 
 type TabType = 'profile' | 'member'
 
+/** When to use chat room API vs live stream API (e.g. for password). */
+export type PasswordApiContext = 'chat' | 'live'
+
 interface TopUserInfoSheetProps {
 	visible: boolean
 	onClose: () => void
 	data: RoomResponse | null
-
 	userRoleOverride?: RoomPlayUserRole
+	/** Explicit context for password (and similar) APIs. If not set, inferred from userRoleOverride (live when set). */
+	passwordContextMode?: PasswordApiContext
 }
 
 export function TopUserInfoSheet({
@@ -195,6 +199,7 @@ export function TopUserInfoSheet({
 	onClose,
 	data,
 	userRoleOverride,
+	passwordContextMode,
 }: TopUserInfoSheetProps) {
 	const updateRoom = useLiveChatStore(s => s.updateRoom)
 	const chatRole = useLiveChatStore(s => s.role)
@@ -592,6 +597,8 @@ export function TopUserInfoSheet({
 				<PasswordSheet
 					visible={passwordSheetVisible}
 					onClose={() => setPasswordSheetVisible(false)}
+					mode={passwordContextMode ?? (userRoleOverride === undefined ? 'chat' : 'live')}
+					streamId={(passwordContextMode === 'live' || (passwordContextMode == null && userRoleOverride !== undefined)) ? data?.id : undefined}
 				/>
 			</View>
 		</Modal>

@@ -201,6 +201,11 @@ interface LiveStreamState {
 		streamId: string,
 		body: UpdateStreamRequest,
 	) => Promise<LiveStreamDetailsResponse>
+	setPasswordStreamRoom: (
+		streamId: string,
+		streamPassword: string,
+	) => Promise<void>
+	removePasswordStreamRoom: (streamId: string) => Promise<void>
 	getStreamsList: () => Promise<unknown>
 	getNearbyLiveStreams: () => Promise<unknown>
 	getStreamMessages: (streamId: string) => Promise<unknown>
@@ -762,6 +767,37 @@ export const useLiveStreamStore = create<LiveStreamState>(set => ({
 			return streamDetails
 		} catch (e: unknown) {
 			const message = e instanceof Error ? e.message : 'Failed to update stream'
+			set({ error: message })
+			throw e
+		}
+	},
+
+	setPasswordStreamRoom: async (
+		streamId: string,
+		streamPassword: string,
+	) => {
+		try {
+			set({ error: null })
+			await initializeAuth()
+			await livesApi.setPasswordStreamRoom(streamId, {
+				stream_password: streamPassword,
+			})
+		} catch (e: unknown) {
+			const message =
+				e instanceof Error ? e.message : 'Failed to set stream password'
+			set({ error: message })
+			throw e
+		}
+	},
+
+	removePasswordStreamRoom: async (streamId: string) => {
+		try {
+			set({ error: null })
+			await initializeAuth()
+			await livesApi.removePasswordStreamRoom(streamId)
+		} catch (e: unknown) {
+			const message =
+				e instanceof Error ? e.message : 'Failed to remove stream password'
 			set({ error: message })
 			throw e
 		}

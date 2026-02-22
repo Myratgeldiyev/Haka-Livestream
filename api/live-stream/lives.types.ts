@@ -52,6 +52,11 @@ export interface SendStreamMessageRequest {
 	content: string
 }
 
+/** Request body for POST /video/streams/:id/set_stream_password/ (stream owners only) */
+export interface SetStreamPasswordRequest {
+	stream_password: string
+}
+
 export interface CreateStreamBattleRequest {
 	stream1_id: string
 	stream2_id: string

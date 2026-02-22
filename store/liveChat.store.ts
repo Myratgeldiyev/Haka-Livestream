@@ -1,6 +1,7 @@
 import { initializeAuth } from '@/api/axios'
 import {
 	AddUserAsAdminRequest,
+	ChangeSeatChatRoomResponse,
 	ChatMessage,
 	EnterRoomResponse,
 	KickOutRequest,
@@ -16,7 +17,8 @@ import {
 import { roomsApi } from '@/api/live-chat/rooms.api'
 import type { LiveStreamDetailsResponse } from '@/api/live-stream/lives.types'
 import {
-	joinChannelForVoice,
+	enableVoicePublishInChannel,
+	joinChannelForVoiceAsListener,
 	leaveChannel,
 	muteLocalAudio,
 	resetAgoraEngine,
@@ -107,6 +109,10 @@ import { create } from 'zustand'
 	unfollowRoom: (roomId: string) => Promise<unknown>
 	getMyChatRoom: () => Promise<LiveStreamDetailsResponse>
 	getFollowingRooms: () => Promise<LiveStreamDetailsResponse[]>
+	changeSeatChatRoom: (seatNumber: string) => Promise<ChangeSeatChatRoomResponse>
+	leaveSeatChatRoom: (seatNumber: string) => Promise<void>
+	setPasswordChatRoom: (roomPassword: string) => Promise<void>
+	removePasswordChatRoom: () => Promise<void>
 }
 
 export const useLiveChatStore = create<LiveChatState>((set, get) => ({
@@ -384,12 +390,12 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 			})
 
 			const appId = process.env.EXPO_PUBLIC_AGORA_APP_ID!
-			console.log('[liveChat.store] createAndJoinRoom: calling joinChannelForVoice', {
+			console.log('[liveChat.store] createAndJoinRoom: calling joinChannelForVoiceAsListener', {
 				channelName: room.channel_name,
 				uid,
 				roomId: room.id,
 			})
-			await joinChannelForVoicePromise(
+			await joinChannelForVoiceAsListenerPromise(
 				appId,
 				room.rtc_token,
 				room.channel_name,
@@ -410,14 +416,6 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 		enterRoom: async (roomId: string) => {
 		try {
 			set({ isConnecting: true, error: null })
-
-			const permission = await Audio.requestPermissionsAsync()
-			if (permission.granted) {
-				console.log('[liveChat.store] Microphone permission granted (enterRoom)')
-			} else {
-				console.log('[liveChat.store] Microphone permission denied (enterRoom)')
-				throw new Error('Microphone permission is required for voice chat')
-			}
 
 			await initializeAuth()
 
@@ -458,12 +456,17 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 			})
 
 			const appId = process.env.EXPO_PUBLIC_AGORA_APP_ID!
-			console.log('[liveChat.store] enterRoom: calling joinChannelForVoice', {
+			console.log('[liveChat.store] enterRoom: calling joinChannelForVoiceAsListener', {
 				channelName: res.channel_name,
 				uid,
 				roomId: res.room.id,
 			})
-			joinChannelForVoicePromise(appId, res.rtc_token, res.channel_name, uid)
+			joinChannelForVoiceAsListenerPromise(
+				appId,
+				res.rtc_token,
+				res.channel_name,
+				uid,
+			)
 				.then(() => set({ isJoined: true }))
 				.catch((e: unknown) =>
 					set({ error: e instanceof Error ? e.message : String(e) }),
@@ -589,6 +592,10 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 
 			await roomsApi.requestSpeakerRole(roomId)
 
+			const appId = process.env.EXPO_PUBLIC_AGORA_APP_ID
+			if (appId) {
+				await enableVoicePublishInChannel(appId)
+			}
 			set({ role: 'listener' })
 		} catch (e: any) {
 			set({ error: e.message })
@@ -844,6 +851,74 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 		}
 	},
 
+	changeSeatChatRoom: async (seatNumber: string) => {
+		const { roomId } = get()
+		if (!roomId) throw new Error('No active room')
+		try {
+			await initializeAuth()
+			const room = await roomsApi.changeSeatChatRoom(roomId, {
+				seat_number: seatNumber,
+			})
+			set(state => ({
+				activeRoom: state.activeRoom
+					? {
+							...state.activeRoom,
+							...room,
+							owner: {
+								...state.activeRoom.owner,
+								...room.owner,
+							},
+						}
+					: state.activeRoom,
+			}))
+			return room
+		} catch (e: any) {
+			set({ error: e.message })
+			throw e
+		}
+	},
+
+	leaveSeatChatRoom: async (seatNumber: string) => {
+		const { roomId } = get()
+		if (!roomId) throw new Error('No active room')
+		try {
+			await initializeAuth()
+			await roomsApi.leaveSeatChatRoom(roomId, { seat_number: seatNumber })
+		} catch (e: any) {
+			set({ error: e.message })
+			throw e
+		}
+	},
+
+	setPasswordChatRoom: async (roomPassword: string) => {
+		const { roomId } = get()
+		console.log('[liveChat.store] setPasswordChatRoom called', {
+			roomId,
+			roomIdType: typeof roomId,
+			hasRoomId: !!roomId,
+		})
+		if (!roomId) throw new Error('No active room')
+		try {
+			await initializeAuth()
+			await roomsApi.setPasswordChatRoom(roomId, { room_password: roomPassword })
+		} catch (e: any) {
+			set({ error: e.message })
+			throw e
+		}
+	},
+
+	removePasswordChatRoom: async () => {
+		const { roomId } = get()
+		if (!roomId) throw new Error('No active room')
+		try {
+			await initializeAuth()
+			await roomsApi.removePasswordChatRoom(roomId)
+		} catch (e: any) {
+			set({ error: e.message })
+			throw e
+		}
+	},
+
 	muteUser: async (userId: string) => {
 		const { roomId, users } = get()
 		if (!roomId) throw new Error('No active room')
@@ -879,13 +954,13 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 	},
 }))
 
-function joinChannelForVoicePromise(
+function joinChannelForVoiceAsListenerPromise(
 	appId: string,
 	token: string,
 	channel: string,
 	uid: number,
 ): Promise<void> {
 	return new Promise<void>((resolve, reject) => {
-		joinChannelForVoice(appId, token, channel, uid, resolve, reject)
+		joinChannelForVoiceAsListener(appId, token, channel, uid, resolve, reject)
 	})
 }

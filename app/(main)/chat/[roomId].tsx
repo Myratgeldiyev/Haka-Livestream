@@ -126,6 +126,11 @@ export default function ChatRoomScreen() {
 	const storeIsMuted = useLiveChatStore(s => s.isMuted)
 	const followRoom = useLiveChatStore(s => s.followRoom)
 	const unfollowRoom = useLiveChatStore(s => s.unfollowRoom)
+	const requestSpeakerRole = useLiveChatStore(s => s.requestSpeakerRole)
+	const changeSeatChatRoom = useLiveChatStore(s => s.changeSeatChatRoom)
+	const leaveSeatChatRoom = useLiveChatStore(s => s.leaveSeatChatRoom)
+
+	const myCurrentSeatNumberRef = useRef<number | null>(null)
 
 	const authenticatedUser = useAuthStore(state => state.user)
 	const { data: myProfile } = useMyProfile()
@@ -326,6 +331,11 @@ export default function ChatRoomScreen() {
 			const state = useLiveChatStore.getState()
 			if (state.pendingMinimized?.roomId === roomId) return
 			if (state.minimizedRoomId === roomId) return
+			const seatNo = myCurrentSeatNumberRef.current
+			if (seatNo != null) {
+				myCurrentSeatNumberRef.current = null
+				state.leaveSeatChatRoom(String(seatNo)).catch(() => {})
+			}
 			leaveRoom().catch(() => {})
 		}
 	}, [leaveRoom, roomId])
@@ -361,9 +371,18 @@ export default function ChatRoomScreen() {
 		})
 	}, [myProfile?.profile_picture, myUserId])
 
-	const handleClose = useCallback(() => {
+	const handleClose = useCallback(async () => {
 		isExitingRef.current = true
 		setLeaveConfirmVisible(false)
+		const seatNo = myCurrentSeatNumberRef.current
+		if (seatNo != null) {
+			try {
+				await leaveSeatChatRoom(String(seatNo))
+			} catch (_) {
+				// continue to leave room even if leave seat fails
+			}
+			myCurrentSeatNumberRef.current = null
+		}
 		if (myUserId) {
 			setSeats(prev => {
 				const next = { ...prev }
@@ -378,7 +397,7 @@ export default function ChatRoomScreen() {
 		}
 		leaveRoom()
 		router.back()
-	}, [myUserId, leaveRoom])
+	}, [myUserId, leaveRoom, leaveSeatChatRoom])
 
 	const handleLeaveConfirmKeep = useCallback(() => {
 		setLeaveConfirmVisible(false)
@@ -428,7 +447,7 @@ export default function ChatRoomScreen() {
 		)
 	}
 
-	const handleTakeSeat = (seatNumber: number) => {
+	const handleTakeSeat = async (seatNumber: number) => {
 		const seat = seats[seatNumber]
 		const isOwner =
 			activeRoom?.owner &&
@@ -443,6 +462,13 @@ export default function ChatRoomScreen() {
 		if (seat.user !== null && !isOwner) {
 			Alert.alert('Notice', 'This seat is occupied')
 			return
+		}
+
+		const revertSeat = () => {
+			setSeats(prev => ({
+				...prev,
+				[seatNumber]: { ...prev[seatNumber], user: null },
+			}))
 		}
 
 		if (isOwner && activeRoom?.owner) {
@@ -468,6 +494,20 @@ export default function ChatRoomScreen() {
 				}
 				return updated
 			})
+			try {
+				if (myCurrentSeatNumberRef.current === null) {
+					await requestSpeakerRole()
+				} else {
+					await changeSeatChatRoom(String(seatNumber))
+				}
+				myCurrentSeatNumberRef.current = seatNumber
+			} catch (e: any) {
+				Alert.alert(
+					'Error',
+					e?.message ?? 'Failed to change seat. Please try again.',
+				)
+				revertSeat()
+			}
 			return
 		}
 
@@ -498,6 +538,20 @@ export default function ChatRoomScreen() {
 			}
 			return updated
 		})
+		try {
+			if (myCurrentSeatNumberRef.current === null) {
+				await requestSpeakerRole()
+			} else {
+				await changeSeatChatRoom(String(seatNumber))
+			}
+			myCurrentSeatNumberRef.current = seatNumber
+		} catch (e: any) {
+			Alert.alert(
+				'Error',
+				e?.message ?? 'Failed to change seat. Please try again.',
+			)
+			revertSeat()
+		}
 	}
 
 	const handleMuteUser = async (userId: string) => {
@@ -609,6 +663,14 @@ export default function ChatRoomScreen() {
 		[myUserId, seatsWithMuteStatus],
 	)
 
+	// Koltukta değilken mikrofonu kapat: sadece koltuk alan kullanıcı konuşabilsin
+	useEffect(() => {
+		if (!isJoined || !roomId || isUserOnSeat) return
+		if (!storeIsMuted) {
+			muteMyself(roomId).catch(() => {})
+		}
+	}, [isJoined, roomId, isUserOnSeat, storeIsMuted, muteMyself])
+
 	const mySeatMuted = useMemo(() => {
 		if (!myUserId) return false
 		const seat = Object.values(seatsWithMuteStatus).find(
@@ -621,12 +683,16 @@ export default function ChatRoomScreen() {
 
 	const handleToggleMute = useCallback(() => {
 		if (!roomId) return
+		if (!isUserOnSeat) {
+			Alert.alert('Notice', 'Take a seat to speak')
+			return
+		}
 		const promise = isMuted ? unmuteMyself(roomId) : muteMyself(roomId)
 		promise.catch((e: any) => {
 			console.error('[CHAT_ROOM] Toggle mute failed:', e)
 			Alert.alert('Error', e?.message ?? 'Failed to toggle mute')
 		})
-	}, [roomId, isMuted, muteMyself, unmuteMyself])
+	}, [roomId, isUserOnSeat, isMuted, muteMyself, unmuteMyself])
 
 	const handleEmojiPicked = useCallback(
 		(emojiId: string) => {
@@ -669,6 +735,7 @@ export default function ChatRoomScreen() {
 								userRole={currentUserRole}
 								isFollowing={isFollowing}
 								onToggleFollow={handleToggleFollowRoom}
+								passwordContextMode="chat"
 							/>
 							<TopRightControls
 								roomId={roomId}

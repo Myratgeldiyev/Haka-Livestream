@@ -176,6 +176,64 @@ export const joinChannelForVoice = async (
 	})
 }
 
+/**
+ * Join channel for voice as listener only (no microphone publish).
+ * Use for enter_room; call enableVoicePublishInChannel() after requestSpeakerRole.
+ */
+export const joinChannelForVoiceAsListener = async (
+	appId: string,
+	rtcToken: string,
+	channelName: string,
+	uid: number,
+	onJoined: () => void,
+	onError: (err: unknown) => void,
+): Promise<void> => {
+	const eng = await getAgoraEngine(appId)
+
+	console.log('[Agora] joinChannelForVoiceAsListener called', {
+		channelName,
+		uid,
+		hasToken: !!rtcToken,
+	})
+
+	eng.enableAudio()
+	try {
+		eng.enableLocalVideo(false)
+	} catch (e) {
+		console.warn('[Agora] enableLocalVideo(false) failed:', e)
+	}
+	eng.setClientRole(ClientRoleType.ClientRoleAudience)
+
+	const wrappedOnJoined = () => {
+		try {
+			eng.enableLocalAudio(false)
+			console.log('[Agora] joinChannelForVoiceAsListener: enableLocalAudio(false)')
+		} catch (e) {
+			console.warn('[Agora] enableLocalAudio(false) failed in listener join:', e)
+		}
+		onJoined()
+	}
+	ensureHandlerRegistered(eng, wrappedOnJoined, onError)
+
+	eng.joinChannel(rtcToken, channelName, uid, {
+		clientRoleType: ClientRoleType.ClientRoleAudience,
+		autoSubscribeAudio: true,
+		autoSubscribeVideo: true,
+		publishMicrophoneTrack: false,
+		publishCameraTrack: false,
+	})
+}
+
+/**
+ * Enable local microphone and switch to broadcaster. Call after requestSpeakerRole succeeds.
+ */
+export const enableVoicePublishInChannel = async (appId: string): Promise<void> => {
+	const eng = await getAgoraEngine(appId)
+	eng.setClientRole(ClientRoleType.ClientRoleBroadcaster)
+	eng.enableLocalAudio(true)
+	console.log('[Agora] enableVoicePublishInChannel: broadcaster + local audio on')
+}
+
 // ─── Viewer: join as audience ─────────────────────────────────────────────────
 
 /**
