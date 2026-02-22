@@ -67,7 +67,7 @@ export function MenuGrid() {
 			id: 'level',
 			label: 'Level',
 			icon: <LevelIcon />,
-			link: '/(main)/become-agent' as const,
+			link: '/(main)/level' as const,
 		},
 		{
 			id: 'backpack',
