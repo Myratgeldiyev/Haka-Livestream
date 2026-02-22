@@ -3,8 +3,10 @@ import { AgentHeader } from '@/components/become-agent/AgentHeader'
 import { ApplySuccess } from '@/components/become-agent/ApplySuccess'
 import { FillAgentInformation } from '@/components/become-agent/FillAgentInformation'
 import RightArrowIcon from '@/components/ui/icons/profile-header/right-arrow'
-import React, { useState } from 'react'
+import { useAgencyHostStore } from '@/store/agency-host.store'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
+	ActivityIndicator,
 	ImageBackground,
 	Pressable,
 	StyleSheet,
@@ -15,14 +17,8 @@ import {
 export interface Admin {
 	id: string
 	username: string
-	image?: any
+	image?: string | null
 }
-
-const MOCK_ADMINS: Admin[] = [
-	{ username: 'Yunus', id: '3', image: '' },
-	{ username: 'Maysa', id: '1', image: '' },
-	{ username: 'Raj', id: '2', image: '' },
-]
 
 type Step = 'select-admin' | 'fill-agent-info' | 'loading' | 'success'
 
@@ -30,21 +26,44 @@ export default function BecomeAgentScreen() {
 	const [step, setStep] = useState<Step>('select-admin')
 	const [selectedAdminId, setSelectedAdminId] = useState<string | null>(null)
 
+	const admins = useAgencyHostStore(s => s.admins)
+	const isLoading = useAgencyHostStore(s => s.isLoading)
+	const error = useAgencyHostStore(s => s.error)
+	const fetchAdmins = useAgencyHostStore(s => s.fetchAdmins)
+	const setSelectedAdminUserId = useAgencyHostStore(s => s.setSelectedAdminUserId)
+
+	useEffect(() => {
+		fetchAdmins()
+	}, [fetchAdmins])
+
+	const mappedAdmins: Admin[] = useMemo(
+		() =>
+			admins.map(a => ({
+				id: String(a.user_id),
+				username: a.username,
+				image: a.profile_picture ?? null,
+			})),
+		[admins],
+	)
+
 	const handleBackPress = () => {
 		if (step === 'fill-agent-info') {
 			setStep('select-admin')
 			setSelectedAdminId(null)
+			setSelectedAdminUserId(null)
 			return
 		}
 
 		if (step === 'success') {
 			setStep('select-admin')
 			setSelectedAdminId(null)
+			setSelectedAdminUserId(null)
 		}
 	}
 
 	const handleApply = (adminId: string) => {
 		setSelectedAdminId(adminId)
+		setSelectedAdminUserId(Number(adminId))
 		setStep('fill-agent-info')
 	}
 	const handleSubmitAgentInfo = async () => {
@@ -78,12 +97,23 @@ export default function BecomeAgentScreen() {
 						</View>
 					</ImageBackground>
 
-					<AdminList
-						title='Please select your Admin'
-						imageSource={null}
-						data={MOCK_ADMINS}
-						onApplyPress={handleApply}
-					/>
+					{isLoading ? (
+						<View style={styles.loadingWrap}>
+							<ActivityIndicator size="large" />
+							<Text style={styles.loadingText}>Loading admins...</Text>
+						</View>
+					) : error ? (
+						<View style={styles.errorWrap}>
+							<Text style={styles.errorText}>{error}</Text>
+						</View>
+					) : (
+						<AdminList
+							title='Please select your Admin'
+							imageSource={null}
+							data={mappedAdmins}
+							onApplyPress={handleApply}
+						/>
+					)}
 				</>
 			)}
 
@@ -152,5 +182,28 @@ const styles = StyleSheet.create({
 		fontWeight: '600',
 		color: '#E61662',
 		fontSize: 14,
+	},
+	loadingWrap: {
+		flex: 1,
+		justifyContent: 'center',
+		alignItems: 'center',
+		paddingVertical: 24,
+	},
+	loadingText: {
+		marginTop: 8,
+		fontSize: 14,
+		color: '#777',
+	},
+	errorWrap: {
+		flex: 1,
+		justifyContent: 'center',
+		alignItems: 'center',
+		paddingHorizontal: 16,
+		paddingVertical: 24,
+	},
+	errorText: {
+		fontSize: 14,
+		color: '#c00',
+		textAlign: 'center',
 	},
 })

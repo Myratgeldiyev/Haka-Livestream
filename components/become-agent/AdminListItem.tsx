@@ -1,20 +1,30 @@
+import { resolveImageUrl } from '@/utils/imageUrl'
 import React from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 
 interface AdminListItemProps {
 	username: string
 	id: string
-	image?: any
+	image?: string | null
 	onApplyPress: () => void
 }
 export function AdminListItem({
 	username,
 	id,
+	image,
 	onApplyPress,
 }: AdminListItemProps) {
+	const avatarUri = image ? resolveImageUrl(image) : null
 	return (
 		<View style={styles.container}>
-			<View style={styles.imagePlaceholder} />
+			{avatarUri ? (
+				<Image
+					source={{ uri: avatarUri }}
+					style={styles.avatarImage}
+				/>
+			) : (
+				<View style={styles.imagePlaceholder} />
+			)}
 			<View style={styles.infoContainer}>
 				<Text style={styles.username}>{username}</Text>
 				<Text style={styles.id}>ID: {id}</Text>
@@ -37,6 +47,12 @@ const styles = StyleSheet.create({
 		borderRadius: 12,
 	},
 	imagePlaceholder: {
+		width: 48,
+		height: 48,
+		borderRadius: 24,
+		backgroundColor: '#D9D9D9',
+	},
+	avatarImage: {
 		width: 48,
 		height: 48,
 		borderRadius: 24,

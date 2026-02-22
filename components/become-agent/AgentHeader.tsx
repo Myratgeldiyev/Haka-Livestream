@@ -11,7 +11,7 @@ export function AgentHeader({ title, onBackPress }: AppHeaderProps) {
 	return (
 		<View style={styles.container}>
 			<Pressable onPress={onBackPress} style={styles.backButton}>
-				<LeftArrowIcon />
+				<LeftArrowIcon props />
 			</Pressable>
 			<Text style={styles.title}>{title}</Text>
 			<View style={styles.rightSpacer} />
@@ -21,7 +21,7 @@ export function AgentHeader({ title, onBackPress }: AppHeaderProps) {
 
 const styles = StyleSheet.create({
 	container: {
-		marginTop: 66,
+		marginTop: 36,
 		height: 56,
 		flexDirection: 'row',
 		alignItems: 'center',

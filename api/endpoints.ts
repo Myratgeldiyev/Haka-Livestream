@@ -91,6 +91,12 @@ export const ENDPOINTS = {
 		REMOVE_STREAM_PASSWORD: (id: string) =>
 			`video/streams/${id}/remove_stream_password/`,
 	},
+	AGENCY_HOST: {
+		GET_ADMINS: 'agency/admins/',
+		CREATE_AGENCY: 'agency/create/agency/',
+		REQUEST_OTP: 'agency/request/otp/',
+		APPLY_HOST: 'agency/host/apply/',
+	},
 	STREAM_BATTLES: {
 		BASE: 'video/stream-battles/',
 		GET_ONE: (id: string) => `video/stream-battles/${id}/`,

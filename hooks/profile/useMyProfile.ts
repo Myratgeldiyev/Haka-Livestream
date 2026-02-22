@@ -22,6 +22,7 @@ export function useMyProfile(): UseMyProfileReturn {
 
 		try {
 			const response = await profileApi.getMyProfile()
+			console.log('getMyProfile response', response)
 			setData(response)
 		} catch (err) {
 			if (err instanceof AxiosError && err.response?.status === 401) {

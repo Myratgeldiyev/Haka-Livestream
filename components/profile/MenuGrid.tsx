@@ -1,5 +1,7 @@
+import { useFocusEffect } from '@react-navigation/native'
+import { useMyProfile } from '@/hooks/profile/useMyProfile'
 import { Href, router } from 'expo-router'
-import React from 'react'
+import React, { useCallback } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
 
 import { MenuItem } from '@/components/profile/MenuItem'
@@ -32,6 +34,16 @@ type MenuItemType = {
 }
 
 export function MenuGrid() {
+	const { data: profile, refetch } = useMyProfile()
+	const isAgent = profile?.is_agent ?? false
+	const isHost = profile?.is_host ?? false
+
+	useFocusEffect(
+		useCallback(() => {
+			refetch()
+		}, [refetch])
+	)
+
 	const menuItems: MenuItemType[] = [
 		{
 			id: 'agency',
@@ -43,7 +55,7 @@ export function MenuGrid() {
 			id: 'host',
 			label: 'Apply for Host',
 			icon: <ApplyHostIcon />,
-			link: '/(main)/become-agent' as const,
+			link: '/(main)/agency-center' as const,
 		},
 		{
 			id: 'coin-seller',
@@ -121,7 +133,7 @@ export function MenuGrid() {
 			id: 'agency-center',
 			label: 'Agency Center',
 			icon: <AgencyCenterIcon />,
-			link: '/(main)/agency-center' as const,
+			link: '/(main)/agent-dashboard' as const,
 		},
 		{
 			id: 'admin-center',
@@ -143,9 +155,24 @@ export function MenuGrid() {
 		},
 	]
 
+	const filteredItems = menuItems
+		.filter(item => {
+			if (item.id === 'agency') return !isAgent
+			if (item.id === 'host') return !isHost && !isAgent
+			if (item.id === 'agency-center') return isAgent
+			if (item.id === 'host-center') return isHost
+			return true
+		})
+		.sort((a, b) => {
+			if (!isAgent) return 0
+			if (a.id === 'agency-center') return -1
+			if (b.id === 'agency-center') return 1
+			return 0
+		})
+
 	return (
 		<View style={styles.container}>
-			{menuItems.map(item => {
+			{filteredItems.map(item => {
 				const pressableProps = item.link
 					? { onPress: () => router.push(item.link) }
 					: {}

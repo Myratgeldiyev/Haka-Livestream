@@ -1,8 +1,11 @@
+import { useMyProfile } from '@/hooks/profile/useMyProfile'
+import { resolveImageUrl } from '@/utils/imageUrl'
 import { router } from 'expo-router'
 import React, { useEffect, useRef, useState } from 'react'
 import {
 	Animated,
 	Dimensions,
+	Image,
 	ImageBackground,
 	Pressable,
 	StyleSheet,
@@ -15,8 +18,13 @@ import RightArrowIcon from '../ui/icons/profile-header/right-arrow'
 const { height } = Dimensions.get('window')
 
 export const ApplySuccess = () => {
+	const { data } = useMyProfile()
 	const translateY = useRef(new Animated.Value(height)).current
 	const [visible, setVisible] = useState(false)
+	const displayUsername = data?.username ?? ''
+	const profilePictureUri = data?.profile_picture
+		? resolveImageUrl(data.profile_picture)
+		: null
 
 	useEffect(() => {
 		const timer = setTimeout(() => {
@@ -65,8 +73,15 @@ export const ApplySuccess = () => {
 				<Text style={styles.successTitle}>Application Success</Text>
 
 				<View style={styles.containerWrapper}>
-					<View style={styles.imagePlaceholder} />
-					<Text style={styles.username}>Samir</Text>
+					{profilePictureUri ? (
+						<Image
+							source={{ uri: profilePictureUri }}
+							style={styles.avatarImage}
+						/>
+					) : (
+						<View style={styles.imagePlaceholder} />
+					)}
+					<Text style={styles.username}>{displayUsername}</Text>
 				</View>
 			</View>
 
@@ -159,6 +174,13 @@ const styles = StyleSheet.create({
 		marginTop: 20,
 	},
 	imagePlaceholder: {
+		width: 48,
+		height: 48,
+		borderRadius: 24,
+		backgroundColor: '#D9D9D9',
+		marginRight: 12,
+	},
+	avatarImage: {
 		width: 48,
 		height: 48,
 		borderRadius: 24,

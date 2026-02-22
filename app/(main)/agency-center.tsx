@@ -5,6 +5,7 @@ import {
 	AgencyCenterMethod2Card,
 	AgencyCenterNoteSection,
 } from '@/components/agency-center'
+import { useAgencyHostStore } from '@/store/agency-host.store'
 import { router } from 'expo-router'
 import React, { useCallback } from 'react'
 import {
@@ -17,10 +18,21 @@ import {
 } from 'react-native'
 
 export default function AgencyCenterScreen() {
+	const applyForHost = useAgencyHostStore(s => s.applyForHost)
+
 	const handleBack = useCallback(() => router.back(), [])
-	const handleMethod1Continue = useCallback((_agentId: string) => {
-		router.push('/agent-dashboard')
-	}, [])
+	const handleMethod1Continue = useCallback(
+		async (agentId: string) => {
+			if (!agentId.trim()) return
+			try {
+				await applyForHost({ agent_id: agentId.trim() })
+				router.replace('/(tabs)/profile')
+			} catch {
+				// Error is set in store (applyForHostError)
+			}
+		},
+		[applyForHost]
+	)
 
 	return (
 		<View style={styles.root}>

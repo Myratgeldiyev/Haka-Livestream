@@ -1,7 +1,15 @@
+import { useAgencyHostStore } from '@/store/agency-host.store'
 import { spacing } from '@/constants/spacing'
 import { fontSizes, fontWeights, lineHeights } from '@/constants/typography'
 import React, { useState } from 'react'
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import {
+	ActivityIndicator,
+	Pressable,
+	StyleSheet,
+	Text,
+	TextInput,
+	View,
+} from 'react-native'
 import { AgencyCenterMethodLabelBadge } from './AgencyCenterMethodLabelBadge'
 import { AGENCY_CENTER } from './constants'
 
@@ -13,8 +21,12 @@ export function AgencyCenterMethod1Card({
 	onContinue,
 }: AgencyCenterMethod1CardProps) {
 	const [agentId, setAgentId] = useState('')
+	const applyForHostLoading = useAgencyHostStore(s => s.applyForHostLoading)
+	const applyForHostError = useAgencyHostStore(s => s.applyForHostError)
+	const clearApplyForHostError = useAgencyHostStore(s => s.clearApplyForHostError)
 
 	const handleContinue = () => {
+		if (applyForHostLoading) return
 		onContinue?.(agentId.trim())
 	}
 
@@ -28,16 +40,27 @@ export function AgencyCenterMethod1Card({
 				placeholder={AGENCY_CENTER.method1Placeholder}
 				placeholderTextColor={AGENCY_CENTER.inputPlaceholder}
 				value={agentId}
-				onChangeText={setAgentId}
+				onChangeText={text => {
+					setAgentId(text)
+					if (applyForHostError) clearApplyForHostError()
+				}}
 				autoCapitalize='none'
 				autoCorrect={false}
 			/>
+			{applyForHostError ? (
+				<Text style={styles.errorText}>{applyForHostError}</Text>
+			) : null}
 			<Pressable
 				style={styles.button}
 				onPress={handleContinue}
 				android_ripple={null}
+				disabled={applyForHostLoading}
 			>
-				<Text style={styles.buttonText}>{AGENCY_CENTER.method1Button}</Text>
+				{applyForHostLoading ? (
+					<ActivityIndicator size="small" color="#fff" />
+				) : (
+					<Text style={styles.buttonText}>{AGENCY_CENTER.method1Button}</Text>
+				)}
 			</Pressable>
 		</View>
 	)
@@ -77,18 +100,22 @@ const styles = StyleSheet.create({
 		fontSize: fontSizes.md,
 		lineHeight: lineHeights.md,
 		color: '#000',
-		marginBottom: spacing.md,
+		marginBottom: spacing.xs,
 		minHeight: 48,
+	},
+	errorText: {
+		fontSize: fontSizes.sm,
+		color: '#E53935',
+		marginBottom: spacing.md,
 	},
 	button: {
 		height: AGENCY_CENTER.method1ButtonHeight,
-		paddingHorizontal: AGENCY_CENTER.method1ButtonPaddingHorizontal,
+		width: '100%',
 		borderRadius: AGENCY_CENTER.method1ButtonBorderRadius,
-		backgroundColor: AGENCY_CENTER.method1ButtonBackground,
+		backgroundColor: '#804EE4',
 		alignItems: 'center',
 		justifyContent: 'center',
 		marginTop: 5,
-		alignSelf: 'flex-start',
 	},
 	buttonText: {
 		fontSize: AGENCY_CENTER.method1ButtonFontSize,
