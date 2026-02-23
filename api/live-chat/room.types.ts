@@ -148,6 +148,11 @@ export interface GetMessagesResponse {
 	created_at: string
 }
 
+/** Request body for POST /voice/rooms/:id/request_speaker_role/ */
+export interface RequestSpeakerRoleRequest {
+	seat_number: number
+}
+
 /** Request body for POST /voice/rooms/:id/change_seat/ */
 export interface ChangeSeatRequest {
 	seat_number: string
@@ -206,14 +211,14 @@ export interface MuteUnmuteUserResponse {
 	message?: string
 }
 
-/** User object in room_followers response */
+/** User object in GET /voice/rooms/:id/room_followers/ response */
 export interface RoomFollowerUser {
 	username: string
 	user_id: number
 	profile_picture: string
 	is_online: boolean
 	online_status: string
-	level: number
+	level?: number
 }
 
 /** Single item from GET /voice/rooms/:id/room_followers/ */
@@ -221,5 +226,25 @@ export interface RoomFollowerItem {
 	user: RoomFollowerUser
 	role: string
 	joined_at: string
+	seat_number: number | null
+	is_muted: boolean
+}
+
+/** User object in GET /voice/rooms/:id/room_speakers/ response */
+export interface RoomSpeakerUser {
+	username: string
+	user_id: number
+	profile_picture: string
+	is_online: boolean
+	online_status: string
+	level?: number
+}
+
+/** Single item from GET /voice/rooms/:id/room_speakers/ - who is on which seat (for other users to see) */
+export interface RoomSpeakerItem {
+	user: RoomSpeakerUser
+	role: string
+	joined_at: string
+	seat_number: number | null
 	is_muted: boolean
 }

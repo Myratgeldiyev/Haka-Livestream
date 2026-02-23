@@ -17,6 +17,7 @@ import {
 	RemoveAdminRequest,
 	RemoveUserResponse,
 	RoomFollowerItem,
+	RoomSpeakerItem,
 	SetRoomPasswordRequest,
 	RoomResponse,
 	RoomUsers,
@@ -28,8 +29,7 @@ import {
 	UploadRoomImagePayload,
 } from './room.types'
 
-// Follow room response example:
-// { "message": "Follow successful", "room_id": "<uuid>" }
+
 export interface FollowRoomResponse {
 	message: string
 	room_id: string
@@ -167,9 +167,13 @@ export const roomsApi = {
 		return data
 	},
 
-	requestSpeakerRole: async (roomId: string): Promise<RoomResponse> => {
+	requestSpeakerRole: async (
+		roomId: string,
+		body?: { seat_number: number },
+	): Promise<RoomResponse> => {
 		const res = await apiClient.post(
 			`${ENDPOINTS.ROOMS.CREATE_ROOM}${roomId}/request_speaker_role/`,
+			body ?? {},
 		)
 		return res.data
 	},
@@ -286,8 +290,18 @@ export const roomsApi = {
 	getRoomFollowers: async (
 		roomId: string,
 	): Promise<RoomFollowerItem[]> => {
-		const { data } = await apiClient.get(
+		const { data } = await apiClient.get<RoomFollowerItem[]>(
 			ENDPOINTS.ROOMS.ROOM_FOLLOWERS(roomId),
+		)
+		return data
+	},
+
+	/** GET /voice/rooms/:id/room_speakers/ - who is on which seat (for other users to see seat occupancy) */
+	getChatRoomSpeakers: async (
+		roomId: string,
+	): Promise<RoomSpeakerItem[]> => {
+		const { data } = await apiClient.get<RoomSpeakerItem[]>(
+			ENDPOINTS.ROOMS.ROOM_SPEAKERS(roomId),
 		)
 		return data
 	},

@@ -8,6 +8,7 @@ import {
 	RemoveAdminRequest,
 	RoomFollowerItem,
 	RoomResponse,
+	RoomSpeakerItem,
 	RoomRole,
 	RoomUsers,
 	StartPkPayload,
@@ -64,7 +65,7 @@ import { create } from 'zustand'
 	) => Promise<RoomResponse>
 	createAndJoinRoom: () => Promise<string>
 	enterRoom: (roomId: string) => Promise<void>
-	requestSpeakerRole: () => Promise<void>
+	requestSpeakerRole: (seatNumber?: number) => Promise<void>
 	fetchRooms: () => Promise<void>
 	fetchNextRooms: () => Promise<void>
 	fetchRoomDetail: (roomId: string) => Promise<void>
@@ -105,6 +106,10 @@ import { create } from 'zustand'
 	roomFollowers: RoomFollowerItem[]
 	roomFollowersLoading: boolean
 	fetchRoomFollowers: (roomId: string) => Promise<void>
+	/** Speakers in room with seat_number - who is on which seat (for other users to see). */
+	roomSpeakers: RoomSpeakerItem[]
+	roomSpeakersLoading: boolean
+	fetchRoomSpeakers: (roomId: string) => Promise<void>
 	followRoom: (roomId: string) => Promise<import('@/api/live-chat/rooms.api').FollowRoomResponse>
 	unfollowRoom: (roomId: string) => Promise<unknown>
 	getMyChatRoom: () => Promise<LiveStreamDetailsResponse>
@@ -145,6 +150,8 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 	followingRooms: [],
 	roomFollowers: [],
 	roomFollowersLoading: false,
+	roomSpeakers: [],
+	roomSpeakersLoading: false,
 
 	fetchRoomFollowers: async (roomId: string) => {
 		try {
@@ -157,6 +164,20 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 			throw e
 		} finally {
 			set({ roomFollowersLoading: false })
+		}
+	},
+
+	fetchRoomSpeakers: async (roomId: string) => {
+		try {
+			set({ roomSpeakersLoading: true, error: null })
+			await initializeAuth()
+			const list = await roomsApi.getChatRoomSpeakers(roomId)
+			set({ roomSpeakers: list })
+		} catch (e: any) {
+			set({ error: e.message })
+			throw e
+		} finally {
+			set({ roomSpeakersLoading: false })
 		}
 	},
 
@@ -578,7 +599,7 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 		set({ messages: [], chatStatusText: 'Messages cleaned' })
 	},
 
-	requestSpeakerRole: async () => {
+	requestSpeakerRole: async (seatNumber?: number) => {
 		try {
 			set({ isConnecting: true })
 
@@ -590,7 +611,10 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 			const { roomId } = get()
 			if (!roomId) throw new Error('Room not entered')
 
-			await roomsApi.requestSpeakerRole(roomId)
+			await roomsApi.requestSpeakerRole(
+				roomId,
+				seatNumber != null ? { seat_number: seatNumber } : undefined,
+			)
 
 			const appId = process.env.EXPO_PUBLIC_AGORA_APP_ID
 			if (appId) {

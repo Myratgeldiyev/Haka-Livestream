@@ -49,7 +49,10 @@ export const ENDPOINTS = {
 		UNFOLLOW_ROOM: (roomId: string) => `voice/unfollow-room/${roomId}/`,
 		GET_MY_CHATROOM: 'voice/get-my-chatroom/',
 		FOLLOWING_ROOMS: 'voice/following-rooms/',
+		/** GET /voice/rooms/:id/room_followers/ - list users in room (with seat_number, is_muted, etc.) */
 		ROOM_FOLLOWERS: (roomId: string) => `voice/rooms/${roomId}/room_followers/`,
+		/** GET /voice/rooms/:id/room_speakers/ - who is on which seat number (for seat sync to other users) */
+		ROOM_SPEAKERS: (roomId: string) => `voice/rooms/${roomId}/room_speakers/`,
 		CHANGE_SEAT: (id: string) => `voice/rooms/${id}/change_seat/`,
 		LEAVE_SEAT: (id: string) => `voice/rooms/${id}/leave_seat/`,
 		SET_ROOM_PASSWORD: (id: string) => `voice/rooms/${id}/set_room_password/`,

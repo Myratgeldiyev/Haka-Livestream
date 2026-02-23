@@ -23,6 +23,7 @@ import {
 } from '@/services/agora/agora.service'
 import { useAuthStore } from '@/store/auth.store'
 import { useLiveChatStore } from '@/store/liveChat.store'
+import { resolveImageUrl } from '@/utils/imageUrl'
 import type { ChatUser } from '@/types/chat-actions/chat-action.types'
 import { TopRightControls, TopUserInfo } from '@/types/game-ranking-types'
 import { useFocusEffect } from '@react-navigation/native'
@@ -65,6 +66,17 @@ function buildEmptySeats(count: number): SeatsState {
 			{ status: 'unlocked' as const, user: null },
 		]),
 	)
+}
+
+/** Format: [seat_emoji:seatNumber:emojiId] - sent so other users show this emoji on that seat */
+const SEAT_EMOJI_MSG_REGEX = /^\[seat_emoji:(\d+):([^\]]+)\]$/
+function parseSeatEmojiMessage(text: string): { seatNumber: number; emojiId: string } | null {
+	const m = text.trim().match(SEAT_EMOJI_MSG_REGEX)
+	if (!m) return null
+	return { seatNumber: Number(m[1]), emojiId: m[2] }
+}
+function toSeatEmojiMessage(seatNumber: number, emojiId: string) {
+	return `[seat_emoji:${seatNumber}:${emojiId}]`
 }
 
 export default function ChatRoomScreen() {
@@ -114,6 +126,10 @@ export default function ChatRoomScreen() {
 	const fetchAllUsersInChatRoom = useLiveChatStore(
 		s => s.fetchAllUsersInChatRoom,
 	)
+	const roomFollowers = useLiveChatStore(s => s.roomFollowers)
+	const fetchRoomFollowers = useLiveChatStore(s => s.fetchRoomFollowers)
+	const roomSpeakers = useLiveChatStore(s => s.roomSpeakers)
+	const fetchRoomSpeakers = useLiveChatStore(s => s.fetchRoomSpeakers)
 	const clearMessages = useLiveChatStore(s => s.clearMessages)
 	const sendMessage = useLiveChatStore(s => s.sendMessage)
 	const leaveRoom = useLiveChatStore(s => s.leaveRoom)
@@ -131,6 +147,9 @@ export default function ChatRoomScreen() {
 	const leaveSeatChatRoom = useLiveChatStore(s => s.leaveSeatChatRoom)
 
 	const myCurrentSeatNumberRef = useRef<number | null>(null)
+	const processedSeatEmojiMessageIdsRef = useRef<Set<string>>(new Set())
+	/** After we change seat, ignore server roomSpeakers for our seat briefly so stale poll doesn't revert us. */
+	const lastSeatChangeAtRef = useRef<number>(0)
 
 	const authenticatedUser = useAuthStore(state => state.user)
 	const { data: myProfile } = useMyProfile()
@@ -152,7 +171,8 @@ export default function ChatRoomScreen() {
 		}
 		return null
 	}, [authenticatedUser, myProfile])
-	const myUserId = currentUserForSeat?.id ?? authenticatedUser?.user_id?.toString()
+	const myUserId =
+		currentUserForSeat?.id ?? authenticatedUser?.user_id?.toString()
 
 	const currentUserRole: RoomPlayUserRole =
 		myUserId != null &&
@@ -217,6 +237,8 @@ export default function ChatRoomScreen() {
 						fetchRoomDetail(roomId),
 						fetchMessages(roomId),
 						fetchAllUsersInChatRoom(roomId),
+						fetchRoomFollowers(roomId),
+						fetchRoomSpeakers(roomId),
 					])
 					return
 				}
@@ -226,6 +248,8 @@ export default function ChatRoomScreen() {
 					fetchRoomDetail(roomId),
 					fetchMessages(roomId),
 					fetchAllUsersInChatRoom(roomId),
+					fetchRoomFollowers(roomId),
+					fetchRoomSpeakers(roomId),
 				])
 			} catch (error: any) {
 				console.error('[CHAT_ROOM] Failed to load room data:', error)
@@ -247,6 +271,8 @@ export default function ChatRoomScreen() {
 		fetchRoomDetail,
 		fetchMessages,
 		fetchAllUsersInChatRoom,
+		fetchRoomFollowers,
+		fetchRoomSpeakers,
 		clearMessages,
 		leaveRoom,
 	])
@@ -258,6 +284,29 @@ export default function ChatRoomScreen() {
 			}
 		}, [roomId, clearMinimized]),
 	)
+
+	// Poll all room data every 4s (no websocket): seats/online users, messages, room detail, users (mute state)
+	useEffect(() => {
+		if (!roomId || !isJoined) return
+		const poll = () => {
+			fetchRoomFollowers(roomId).catch(() => {})
+			fetchRoomSpeakers(roomId).catch(() => {})
+			fetchMessages(roomId).catch(() => {})
+			fetchRoomDetail(roomId).catch(() => {})
+			fetchAllUsersInChatRoom(roomId).catch(() => {})
+		}
+		poll()
+		const interval = setInterval(poll, 4000)
+		return () => clearInterval(interval)
+	}, [
+		roomId,
+		isJoined,
+		fetchRoomFollowers,
+		fetchRoomSpeakers,
+		fetchMessages,
+		fetchRoomDetail,
+		fetchAllUsersInChatRoom,
+	])
 
 	// Agora volume indication: speakingUids = uids with volume > 50; map uid 0 to local user's store uid
 	useEffect(() => {
@@ -276,10 +325,7 @@ export default function ChatRoomScreen() {
 			}
 			setSpeakingUids(prev => {
 				const next = new Set(uids)
-				if (
-					prev.length === next.size &&
-					prev.every(u => next.has(u))
-				)
+				if (prev.length === next.size && prev.every(u => next.has(u)))
 					return prev
 				return Array.from(next)
 			})
@@ -349,6 +395,60 @@ export default function ChatRoomScreen() {
 			return next
 		})
 	}, [roomSeatCount])
+
+	// Sync seat occupancy from server (room_speakers) so all users see who is on which seat.
+	// Preserve current user's seat if server hasn't returned it yet (avoid flicker + 400 on retry).
+	useEffect(() => {
+		if (roomSeatCount <= 0) return
+		const mySeat = myCurrentSeatNumberRef.current
+		// Keep ref in sync when server says we're on a seat; don't clear ref when server is stale (we may have just taken seat)
+		const mySpeaker = roomSpeakers.find(
+			f => myUserId != null && String(f.user.user_id) === myUserId,
+		)
+		if (mySpeaker?.seat_number != null) {
+			myCurrentSeatNumberRef.current = mySpeaker.seat_number
+		} else if (mySpeaker && mySpeaker.seat_number === null) {
+			// Server explicitly says we're in room but not on a seat (we left or never took one)
+			myCurrentSeatNumberRef.current = null
+		}
+		setSeats(prev => {
+			const next: SeatsState = { ...prev }
+			for (let n = 1; n <= roomSeatCount; n++) {
+				const existing = next[n]
+				const speaker = roomSpeakers.find(
+					s => s.seat_number != null && s.seat_number === n,
+				)
+				if (speaker) {
+					// Resolve profile_picture to full URL so avatar image loads (API often returns path like /media/...)
+					const avatarUrl = resolveImageUrl(speaker.user.profile_picture) || ''
+					next[n] = {
+						status: existing?.status ?? 'unlocked',
+						user: {
+							id: String(speaker.user.user_id),
+							username: speaker.user.username,
+							avatar: avatarUrl,
+						},
+						isTurnedOff: existing?.isTurnedOff,
+					}
+				} else {
+					// Don't clear my own seat if server hasn't caught up yet (stale room_speakers) or we just changed seat
+					const isMySeat =
+						myUserId != null && (existing?.user?.id === myUserId || mySeat === n)
+					const justChangedSeat = Date.now() - lastSeatChangeAtRef.current < 2500
+					if (isMySeat && (justChangedSeat || (mySeat === n && existing?.user))) {
+						next[n] = existing ?? { status: 'unlocked', user: null }
+					} else if (!isMySeat || !justChangedSeat) {
+						next[n] = {
+							status: existing?.status ?? 'unlocked',
+							user: null,
+							isTurnedOff: existing?.isTurnedOff,
+						}
+					}
+				}
+			}
+			return next
+		})
+	}, [roomSpeakers, roomSeatCount, myUserId])
 
 	useEffect(() => {
 		const picture = myProfile?.profile_picture
@@ -496,11 +596,13 @@ export default function ChatRoomScreen() {
 			})
 			try {
 				if (myCurrentSeatNumberRef.current === null) {
-					await requestSpeakerRole()
+					await requestSpeakerRole(seatNumber)
 				} else {
 					await changeSeatChatRoom(String(seatNumber))
 				}
 				myCurrentSeatNumberRef.current = seatNumber
+				lastSeatChangeAtRef.current = Date.now()
+				setTimeout(() => fetchRoomSpeakers(roomId).catch(() => {}), 800)
 			} catch (e: any) {
 				Alert.alert(
 					'Error',
@@ -540,11 +642,13 @@ export default function ChatRoomScreen() {
 		})
 		try {
 			if (myCurrentSeatNumberRef.current === null) {
-				await requestSpeakerRole()
+				await requestSpeakerRole(seatNumber)
 			} else {
 				await changeSeatChatRoom(String(seatNumber))
 			}
 			myCurrentSeatNumberRef.current = seatNumber
+			lastSeatChangeAtRef.current = Date.now()
+			setTimeout(() => fetchRoomSpeakers(roomId).catch(() => {}), 800)
 		} catch (e: any) {
 			Alert.alert(
 				'Error',
@@ -694,9 +798,22 @@ export default function ChatRoomScreen() {
 		})
 	}, [roomId, isUserOnSeat, isMuted, muteMyself, unmuteMyself])
 
+	// When we receive a seat_emoji message (from another user), show that emoji on their seat
+	useEffect(() => {
+		const processed = processedSeatEmojiMessageIdsRef.current
+		for (const msg of messages) {
+			if (processed.has(msg.id) || msg.isMe) continue
+			const parsed = parseSeatEmojiMessage(msg.text)
+			if (!parsed) continue
+			processed.add(msg.id)
+			setSeatEmojiBurst({ seatNumber: parsed.seatNumber, emojiId: parsed.emojiId })
+			setTimeout(() => setSeatEmojiBurst(null), 2500)
+		}
+	}, [messages])
+
 	const handleEmojiPicked = useCallback(
 		(emojiId: string) => {
-			if (!myUserId) return
+			if (!myUserId || !roomId) return
 			const entry = Object.entries(seatsWithMuteStatus).find(([_, seat]) => {
 				const seatUserId = seat.user?.id?.toString()
 				return seatUserId != null && seatUserId === myUserId
@@ -705,8 +822,16 @@ export default function ChatRoomScreen() {
 			const seatNumber = Number(entry[0])
 			setSeatEmojiBurst({ seatNumber, emojiId })
 			setTimeout(() => setSeatEmojiBurst(null), 2500)
+			// Send so other users see this emoji on our seat (they get it via message poll)
+			sendMessage(toSeatEmojiMessage(seatNumber, emojiId)).catch(() => {})
 		},
-		[myUserId, seatsWithMuteStatus],
+		[myUserId, roomId, seatsWithMuteStatus, sendMessage],
+	)
+
+	// Chat list: hide seat_emoji system messages
+	const displayMessages = useMemo(
+		() => messages.filter(m => !parseSeatEmojiMessage(m.text)),
+		[messages],
 	)
 
 	const seatSectionPaddingBottom = Math.min(
@@ -735,7 +860,7 @@ export default function ChatRoomScreen() {
 								userRole={currentUserRole}
 								isFollowing={isFollowing}
 								onToggleFollow={handleToggleFollowRoom}
-								passwordContextMode="chat"
+								passwordContextMode='chat'
 							/>
 							<TopRightControls
 								roomId={roomId}
@@ -788,7 +913,7 @@ export default function ChatRoomScreen() {
 									: 'Public message disabled'}
 							</Text>
 							{publicMsgEnabled ? (
-								<ChatList messages={messages} statusText={chatStatusText} />
+								<ChatList messages={displayMessages} statusText={chatStatusText} />
 							) : null}
 						</View>
 						<SafeAreaView edges={['bottom']}>

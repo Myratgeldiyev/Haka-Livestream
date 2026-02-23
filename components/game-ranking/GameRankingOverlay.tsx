@@ -70,7 +70,7 @@ export function GameRankingOverlay({
 			() => {
 				handleClose()
 				return true
-			}
+			},
 		)
 
 		return () => backHandler.remove()
@@ -79,11 +79,7 @@ export function GameRankingOverlay({
 	const renderContent = useCallback(() => {
 		switch (activeTab) {
 			case 'onlineUsers':
-				return (
-					<OnlineUsersSection
-					data={visibleUsers}
-					/>
-				)
+				return <OnlineUsersSection data={visibleUsers} />
 
 			case 'contribution':
 				return <ContributionSection data={visibleUsers} />
