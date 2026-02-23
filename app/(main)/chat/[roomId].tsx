@@ -181,7 +181,12 @@ export default function ChatRoomScreen() {
 			? 'owner'
 			: 'listener'
 
-	const [isFollowing, setIsFollowing] = useState(false)
+	const isFollowing = useMemo(
+		() =>
+			myUserId != null &&
+			roomFollowers.some(f => String(f.user.user_id) === myUserId),
+		[roomFollowers, myUserId],
+	)
 
 	const onlineUsersCount = useMemo(
 		() => users.filter(u => u.user.is_online === true).length,
@@ -190,30 +195,15 @@ export default function ChatRoomScreen() {
 
 	const handleToggleFollowRoom = useCallback(async () => {
 		if (!roomId) return
-		console.log('[CHAT_ROOM] handleToggleFollowRoom start', {
-			roomId,
-			isFollowing,
-		})
 		try {
 			if (isFollowing) {
-				console.log('[CHAT_ROOM] calling unfollowRoom')
 				await unfollowRoom(roomId)
-				setIsFollowing(false)
+				await fetchRoomFollowers(roomId)
 			} else {
-				console.log('[CHAT_ROOM] calling followRoom')
-				const res = await followRoom(roomId)
-				console.log('[CHAT_ROOM] followRoom success', res)
-				setIsFollowing(true)
+				await followRoom(roomId)
+				await fetchRoomFollowers(roomId)
 			}
 		} catch (e: any) {
-			console.log('[CHAT_ROOM] handleToggleFollowRoom error', {
-				status: e?.response?.status,
-				data: e?.response?.data,
-				url: e?.config?.url,
-				method: e?.config?.method,
-				requestData: e?.config?.data,
-				message: e?.message,
-			})
 			Alert.alert(
 				'Follow error',
 				e?.response?.data?.message ||
@@ -221,7 +211,7 @@ export default function ChatRoomScreen() {
 					'Failed to update follow state. Please try again.',
 			)
 		}
-	}, [roomId, isFollowing, followRoom, unfollowRoom])
+	}, [roomId, isFollowing, followRoom, unfollowRoom, fetchRoomFollowers])
 
 	useEffect(() => {
 		if (!roomId) {
@@ -313,6 +303,7 @@ export default function ChatRoomScreen() {
 		const VOLUME_THRESHOLD = 50
 		const cb = (speakers: { uid: number; volume: number }[]) => {
 			const storeUid = useLiveChatStore.getState().uid
+			// Agora reports local user as uid 0 or actual uid; map 0 -> storeUid so getIsSpeakingForSeat sees us
 			const uids = speakers
 				.filter(s => s.volume > VOLUME_THRESHOLD)
 				.map(s => (s.uid === 0 && storeUid != null ? storeUid : s.uid))
@@ -338,9 +329,17 @@ export default function ChatRoomScreen() {
 		if (!isJoined || !roomId) return
 		const appId = process.env.EXPO_PUBLIC_AGORA_APP_ID
 		if (!appId) return
-		// 200ms interval, smooth 3, reportVad true; call only after join
+		// 200ms interval, smooth 3, reportVad true; call after join
 		enableAudioVolumeIndication(appId, 200, 3, true).catch(() => {})
 	}, [isJoined, roomId])
+
+	// Re-enable volume indication when user takes a seat (broadcaster) so local speaking is reported
+	useEffect(() => {
+		if (!isUserOnSeat || !isJoined || !roomId) return
+		const appId = process.env.EXPO_PUBLIC_AGORA_APP_ID
+		if (!appId) return
+		enableAudioVolumeIndication(appId, 200, 3, true).catch(() => {})
+	}, [isUserOnSeat, isJoined, roomId])
 
 	const getIsSpeakingForSeat = useCallback(
 		(seatNumber: number, seat: Seat | undefined): boolean => {
@@ -431,13 +430,21 @@ export default function ChatRoomScreen() {
 						isTurnedOff: existing?.isTurnedOff,
 					}
 				} else {
-					// Don't clear my own seat if server hasn't caught up yet (stale room_speakers) or we just changed seat
+					// Don't clear my own seat if server hasn't caught up yet (stale room_speakers) or we just changed seat.
+					// Window 6s so it outlasts the 4s poll; also preserve when we're not in server list yet (mySpeaker == null).
 					const isMySeat =
 						myUserId != null && (existing?.user?.id === myUserId || mySeat === n)
-					const justChangedSeat = Date.now() - lastSeatChangeAtRef.current < 2500
-					if (isMySeat && (justChangedSeat || (mySeat === n && existing?.user))) {
+					const justChangedSeat = Date.now() - lastSeatChangeAtRef.current < 6000
+					const serverSaysWeOnThisSeat = mySpeaker?.seat_number === n
+					const serverSaysWeLeft = mySpeaker != null && mySpeaker.seat_number === null
+					// When justChangedSeat, always preserve (server often still has us as seat_number null). Otherwise preserve only if server agrees or we're not in list.
+					const preserve =
+						isMySeat &&
+						(justChangedSeat ||
+							((serverSaysWeOnThisSeat || mySpeaker == null) && !serverSaysWeLeft))
+					if (preserve) {
 						next[n] = existing ?? { status: 'unlocked', user: null }
-					} else if (!isMySeat || !justChangedSeat) {
+					} else {
 						next[n] = {
 							status: existing?.status ?? 'unlocked',
 							user: null,
@@ -594,6 +601,7 @@ export default function ChatRoomScreen() {
 				}
 				return updated
 			})
+			lastSeatChangeAtRef.current = Date.now()
 			try {
 				if (myCurrentSeatNumberRef.current === null) {
 					await requestSpeakerRole(seatNumber)
@@ -640,6 +648,7 @@ export default function ChatRoomScreen() {
 			}
 			return updated
 		})
+		lastSeatChangeAtRef.current = Date.now()
 		try {
 			if (myCurrentSeatNumberRef.current === null) {
 				await requestSpeakerRole(seatNumber)
@@ -774,6 +783,16 @@ export default function ChatRoomScreen() {
 			muteMyself(roomId).catch(() => {})
 		}
 	}, [isJoined, roomId, isUserOnSeat, storeIsMuted, muteMyself])
+
+	// Re-enable volume indication when screen gains focus while on seat (e.g. after background / other app audio)
+	useFocusEffect(
+		useCallback(() => {
+			if (!isUserOnSeat || !isJoined || !roomId) return
+			const appId = process.env.EXPO_PUBLIC_AGORA_APP_ID
+			if (!appId) return
+			enableAudioVolumeIndication(appId, 200, 3, true).catch(() => {})
+		}, [isUserOnSeat, isJoined, roomId]),
+	)
 
 	const mySeatMuted = useMemo(() => {
 		if (!myUserId) return false

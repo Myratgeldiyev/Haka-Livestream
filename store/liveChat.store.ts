@@ -619,8 +619,10 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 			const appId = process.env.EXPO_PUBLIC_AGORA_APP_ID
 			if (appId) {
 				await enableVoicePublishInChannel(appId)
+				await new Promise<void>(r => setTimeout(r, 150))
+				await unmuteLocalAudio()
 			}
-			set({ role: 'listener' })
+			set({ role: 'listener', isMuted: false })
 		} catch (e: any) {
 			set({ error: e.message })
 			throw e

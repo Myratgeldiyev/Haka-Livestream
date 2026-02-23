@@ -2,6 +2,7 @@ import Constants from 'expo-constants'
 import {
 	AudioProfileType,
 	AudioScenarioType,
+	ChannelMediaOptions,
 	ChannelProfileType,
 	ClientRoleType,
 	createAgoraRtcEngine,
@@ -226,12 +227,25 @@ export const joinChannelForVoiceAsListener = async (
 
 /**
  * Enable local microphone and switch to broadcaster. Call after requestSpeakerRole succeeds.
+ * Uses updateChannelMediaOptions so the channel actually publishes our mic (volume indication then reports > 0).
  */
 export const enableVoicePublishInChannel = async (appId: string): Promise<void> => {
 	const eng = await getAgoraEngine(appId)
 	eng.setClientRole(ClientRoleType.ClientRoleBroadcaster)
 	eng.enableLocalAudio(true)
-	console.log('[Agora] enableVoicePublishInChannel: broadcaster + local audio on')
+	const options: ChannelMediaOptions = {
+		clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+		publishMicrophoneTrack: true,
+		publishCameraTrack: false,
+		autoSubscribeAudio: true,
+		autoSubscribeVideo: true,
+		enableAudioRecordingOrPlayout: true,
+	}
+	const ret = eng.updateChannelMediaOptions(options)
+	if (ret !== 0) {
+		console.warn('[Agora] updateChannelMediaOptions returned', ret)
+	}
+	console.log('[Agora] enableVoicePublishInChannel: broadcaster + publishMicrophoneTrack true')
 }
 
 // ─── Viewer: join as audience ─────────────────────────────────────────────────
