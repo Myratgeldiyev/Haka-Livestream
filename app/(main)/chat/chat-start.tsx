@@ -1,20 +1,18 @@
 import { BottomControlsChat } from '@/components/live-chat/BottomControlsChat'
 import { SeatGrid } from '@/components/live-room'
-import { EditInfoBottomSheet, TopInfoOverlay } from '@/components/live-stream'
-import { LIVE_STREAM, LiveStreamTab } from '@/constants/liveStream'
+import {
+	EditInfoBottomSheet,
+	LiveChatTabs,
+	TopInfoOverlay,
+} from '@/components/live-stream'
+import { LIVE_STREAM } from '@/constants/liveStream'
+import { spacing } from '@/constants/spacing'
 import { useMyProfile } from '@/hooks/profile/useMyProfile'
 import { leaveChannel } from '@/services/agora/agora.service'
 import { router } from 'expo-router'
-import React, { useEffect, useRef, useState } from 'react'
-import {
-	Animated,
-	ImageBackground,
-	LayoutChangeEvent,
-	Pressable,
-	StyleSheet,
-	Text,
-	View,
-} from 'react-native'
+import React, { useEffect, useState } from 'react'
+import { ImageBackground, StyleSheet, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 type SeatStatus = 'locked' | 'unlocked'
 type Seat = { status: SeatStatus; user: null }
@@ -29,82 +27,8 @@ function buildEmptySeats(count: number): SeatsState {
 	)
 }
 
-interface TabMeasurement {
-	x: number
-	width: number
-}
-
-function LiveChatTabsWithNavigation() {
-	const [activeTab] = useState<LiveStreamTab>('Chat')
-	const [isReady, setIsReady] = useState(false)
-	const measurements = useRef<Record<LiveStreamTab, TabMeasurement>>(
-		{} as Record<LiveStreamTab, TabMeasurement>,
-	).current
-
-	const scaleX = useRef(new Animated.Value(0)).current
-
-	const onTabLayout = (tab: LiveStreamTab) => (e: LayoutChangeEvent) => {
-		const { x, width } = e.nativeEvent.layout
-		measurements[tab] = { x, width }
-
-		if (tab === activeTab && !isReady) {
-			setIsReady(true)
-			Animated.spring(scaleX, {
-				toValue: 1,
-				useNativeDriver: true,
-				tension: 100,
-				friction: 10,
-			}).start()
-		}
-	}
-
-	const handleTabPress = (tab: LiveStreamTab) => {
-		if (tab === 'Live') {
-			router.back()
-		}
-	}
-
-	const activeMeasurement = measurements[activeTab]
-
-	return (
-		<View style={styles.tabsContainer}>
-			<View style={styles.tabsRow}>
-				{LIVE_STREAM.tabs.map(tab => (
-					<Pressable
-						key={tab}
-						onPress={() => handleTabPress(tab)}
-						onLayout={onTabLayout(tab)}
-						style={styles.tabButton}
-					>
-						<Text
-							style={[
-								styles.tabText,
-								activeTab === tab && styles.activeTabText,
-							]}
-						>
-							{tab}
-						</Text>
-					</Pressable>
-				))}
-			</View>
-
-			{isReady && activeMeasurement && (
-				<Animated.View
-					style={[
-						styles.indicator,
-						{
-							width: activeMeasurement.width,
-							left: activeMeasurement.x,
-							transform: [{ scaleX }],
-						},
-					]}
-				/>
-			)}
-		</View>
-	)
-}
-
 export default function LiveChatScreen() {
+	const insets = useSafeAreaInsets()
 	const { data: profile } = useMyProfile()
 	const [editSheetVisible, setEditSheetVisible] = useState(false)
 	const [seats] = useState<SeatsState>(() => buildEmptySeats(10))
@@ -155,9 +79,22 @@ export default function LiveChatScreen() {
 					/>
 				</View>
 
-				<View style={styles.bottomContainer}>
+				<View
+					style={[
+						styles.bottomContainer,
+						{
+							bottom: insets.bottom + LIVE_STREAM.spacing.bottomTabsOffset,
+							paddingHorizontal: spacing.screen.horizontal,
+						},
+					]}
+				>
 					<BottomControlsChat />
-					<LiveChatTabsWithNavigation />
+					<LiveChatTabs
+						activeTab="Chat"
+						onTabChange={tab => {
+							if (tab === 'Live') router.back()
+						}}
+					/>
 				</View>
 			</ImageBackground>
 			<EditInfoBottomSheet
@@ -194,12 +131,12 @@ const styles = StyleSheet.create({
 	},
 	seatSection: {
 		flex: 1,
+		justifyContent: 'center',
 		paddingHorizontal: 16,
 	},
 
 	bottomContainer: {
 		position: 'absolute',
-		bottom: 40,
 		left: 0,
 		right: 0,
 		alignItems: 'center',
@@ -231,35 +168,5 @@ const styles = StyleSheet.create({
 		color: '#FFFFFF',
 		fontSize: 14,
 		fontWeight: '600',
-	},
-	tabsContainer: {
-		alignItems: 'center',
-		position: 'relative',
-		marginTop: 30,
-	},
-	tabsRow: {
-		flexDirection: 'row',
-		gap: 32,
-		paddingBottom: 8,
-	},
-	tabButton: {
-		paddingVertical: 5,
-		paddingHorizontal: 4,
-	},
-	tabText: {
-		fontSize: 16,
-		fontWeight: '500',
-		color: 'rgba(255, 255, 255, 0.6)',
-	},
-	activeTabText: {
-		color: '#FFFFFF',
-		fontWeight: '600',
-	},
-	indicator: {
-		position: 'absolute',
-		bottom: 0,
-		height: 3,
-		backgroundColor: '#FFFFFF',
-		borderRadius: 1.5,
 	},
 })

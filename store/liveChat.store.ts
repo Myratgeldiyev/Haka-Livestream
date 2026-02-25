@@ -531,8 +531,12 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 			await initializeAuth()
 			const response = await roomsApi.sendMessage(roomId, { content })
 
+			// Use the same stable key format as fetchMessages so polls
+			// don't create duplicates for the same backend message.
+			const stableId = `${response.user.user_id}-${response.created_at}-${response.content}`
+
 			const newMessage: ChatMessage = {
-				id: `${response.user.user_id}-${Date.now()}`,
+				id: stableId,
 				text: response.content,
 				time: response.created_at,
 				isMe: response.user.user_id === uid,
@@ -593,15 +597,43 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 
 			const { uid } = get()
 
-			const messages: ChatMessage[] = messagesResponse.map((msg, index) => ({
-				id: `${msg.user.user_id}-${msg.created_at}-${index}`,
+			const fetchedMessages: ChatMessage[] = messagesResponse.map(msg => ({
+				// Stable key derived from backend fields only (no index),
+				// matches the ID used in sendMessage for the same message.
+				id: `${msg.user.user_id}-${msg.created_at}-${msg.content}`,
 				text: msg.content,
 				time: msg.created_at,
 				isMe: msg.user.user_id === uid,
 				user: msg.user,
 			}))
 
-			set({ messages, chatStatusText: null })
+			set(state => {
+				if (state.messages.length === 0) {
+					return { messages: fetchedMessages, chatStatusText: null }
+				}
+
+				const existingById = new Map(
+					state.messages.map(m => [m.id, m] as const),
+				)
+
+				let changed = false
+				for (const msg of fetchedMessages) {
+					if (!existingById.has(msg.id)) {
+						existingById.set(msg.id, msg)
+						changed = true
+					}
+				}
+
+				if (!changed) {
+					return { messages: state.messages, chatStatusText: null }
+				}
+
+				const merged = Array.from(existingById.values()).sort((a, b) =>
+					a.time < b.time ? -1 : a.time > b.time ? 1 : 0,
+				)
+
+				return { messages: merged, chatStatusText: null }
+			})
 		} catch (e: any) {
 			console.error('[STORE] fetchMessages failed:', e.message)
 			set({ error: e.message })
@@ -955,26 +987,59 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 	},
 
 	getMyChatRoom: async () => {
+		// #region agent log
+		fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'liveChat.store:getMyChatRoom:entry', message: 'getMyChatRoom called', data: {}, timestamp: Date.now(), hypothesisId: 'H1,H4' }) }).catch(() => {})
+		// #endregion
 		try {
 			set({ error: null })
-			await initializeAuth()
+			const token = await initializeAuth()
+			// #region agent log
+			fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'liveChat.store:getMyChatRoom:afterInitAuth', message: 'after initializeAuth', data: { hasToken: !!token }, timestamp: Date.now(), hypothesisId: 'H3' }) }).catch(() => {})
+			// #endregion
 			const room = await roomsApi.getMyChatRoom()
 			set({ myChatRoom: room })
+			// #region agent log
+			fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'liveChat.store:getMyChatRoom:success', message: 'getMyChatRoom success', data: { hasRoom: !!room }, timestamp: Date.now(), hypothesisId: 'H1' }) }).catch(() => {})
+			// #endregion
 			return room
 		} catch (e: any) {
+			const status = e?.response?.status
+			// #region agent log
+			fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'liveChat.store:getMyChatRoom:catch', message: 'getMyChatRoom threw', data: { status }, timestamp: Date.now(), hypothesisId: 'H1,H4' }) }).catch(() => {})
+			// #endregion
 			set({ error: e.message })
 			throw e
 		}
 	},
 
 	getFollowingRooms: async () => {
+		// #region agent log
+		fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'liveChat.store:getFollowingRooms:entry', message: 'getFollowingRooms called', data: {}, timestamp: Date.now(), hypothesisId: 'H2,H4' }) }).catch(() => {})
+		// #endregion
 		try {
 			set({ error: null })
-			await initializeAuth()
+			const token = await initializeAuth()
+			// #region agent log
+			fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'liveChat.store:getFollowingRooms:afterInitAuth', message: 'after initializeAuth', data: { hasToken: !!token }, timestamp: Date.now(), hypothesisId: 'H3' }) }).catch(() => {})
+			// #endregion
 			const rooms = await roomsApi.getFollowingRooms()
 			set({ followingRooms: rooms })
+			// #region agent log
+			fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'liveChat.store:getFollowingRooms:success', message: 'getFollowingRooms success', data: { roomsCount: Array.isArray(rooms) ? rooms.length : 0 }, timestamp: Date.now(), hypothesisId: 'H2' }) }).catch(() => {})
+			// #endregion
 			return rooms
 		} catch (e: any) {
+			const status = e?.response?.status
+			const fallbackApplied = status === 500
+			// #region agent log
+			fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'liveChat.store:getFollowingRooms:catch', message: 'getFollowingRooms catch', data: { status, fallbackApplied }, timestamp: Date.now(), hypothesisId: 'H2,H4' }) }).catch(() => {})
+			// #endregion
+			// Backend 500 (örn. PythonAnywhere): listeyi boş göster, uygulama kırılmasın
+			if (status === 500) {
+				console.warn('[liveChat.store] getFollowingRooms 500, using empty list. Backend log: wiselabyrinth.pythonanywhere.com → Error log')
+				set({ followingRooms: [] })
+				return []
+			}
 			set({ error: e.message })
 			throw e
 		}

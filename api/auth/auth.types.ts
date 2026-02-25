@@ -31,6 +31,19 @@ export type UserIdLoginResponse = {
 	}
 }
 
+export type GoogleLoginPayload = {
+	token: string
+}
+
+export type GoogleLoginResponse = {
+	access: string
+	isNewUser?: boolean
+	user: {
+		id: number
+		username?: string
+	}
+}
+
 export interface VerifyOtpPayload {
 	phone_number: string
 	otp_code: string

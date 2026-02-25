@@ -8,6 +8,7 @@ import {
 	RoomCardSkeleton,
 	RoomData,
 } from '@/components/party'
+import { initializeAuth } from '@/api/axios'
 import { spacing } from '@/constants/spacing'
 import { useLiveChatStore } from '@/store/liveChat.store'
 import { useFocusEffect } from '@react-navigation/native'
@@ -112,10 +113,29 @@ export default function PartyScreen() {
 
 	const fetchFollowingData = useCallback(async () => {
 		setFollowingLoading(true)
+		// #region agent log
+		fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'party.tsx:fetchFollowingData:start', message: 'fetchFollowingData started', data: { activeTab: 'following' }, timestamp: Date.now(), hypothesisId: 'H1' }) }).catch(() => {})
+		// #endregion
 		try {
+			// Token'ı önce set et; following-rooms API sadece Authorization: Bearer <token> bekliyor
+			await initializeAuth()
 			await Promise.all([getMyChatRoom(), getFollowingRooms()])
-		} catch (e) {
-			console.log('Failed to load following data', e)
+			// #region agent log
+			fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'party.tsx:fetchFollowingData:success', message: 'Promise.all resolved', data: {}, timestamp: Date.now(), hypothesisId: 'H1' }) }).catch(() => {})
+			// #endregion
+		} catch (e: any) {
+			const err = e as import('axios').AxiosError
+			const failedUrl = err?.config?.url ?? ''
+			const status = err?.response?.status
+			// #region agent log
+			fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'party.tsx:fetchFollowingData:catch', message: 'Promise.all rejected', data: { failedUrl, status, isGetMyChatroom: failedUrl.includes('get-my-chatroom'), isFollowingRooms: failedUrl.includes('following-rooms') }, timestamp: Date.now(), hypothesisId: 'H1,H2,H4,H5' }) }).catch(() => {})
+			// #endregion
+			console.error('[PARTY] Failed to load following data:', {
+				message: err?.message,
+				status,
+				url: err?.config?.url,
+				responseData: err?.response?.data,
+			})
 		} finally {
 			setFollowingLoading(false)
 		}

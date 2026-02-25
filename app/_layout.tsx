@@ -3,6 +3,7 @@ import {
 	DraggableMinimizedStreamOverlay,
 } from '@/components/live-room'
 import SplashScreenComponent from '@/components/SplashScreen'
+import { useVoiceRoomKeepAwake } from '@/hooks/live/useVoiceRoomKeepAwake'
 import { initializeAuth } from '@/api/axios'
 import * as Font from 'expo-font'
 import { Stack } from 'expo-router'
@@ -20,6 +21,9 @@ LogBox.ignoreLogs(['Unable to activate keep awake'])
 
 export default function RootLayout() {
 	const [isAppReady, setIsAppReady] = useState(false)
+
+	// Keep screen awake while connected to a voice chat room (including minimized overlay).
+	useVoiceRoomKeepAwake()
 
 	useEffect(() => {
 		SplashScreen.hideAsync().catch(() => {})

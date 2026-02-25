@@ -11,7 +11,9 @@ export function useGoogleAuth() {
 
 		scopes: ['profile', 'email'],
 		prompt: Prompt.SelectAccount,
-		redirectUri: AuthSession.makeRedirectUri(),
+		// Sabit redirect URI: Google Console'da "Authorized redirect URIs" listesine
+		// tam olarak bu değeri ekleyin (örn. hakalive://redirect).
+		redirectUri: AuthSession.makeRedirectUri({ scheme: 'hakalive', path: 'redirect' }),
 	})
 
 	return {

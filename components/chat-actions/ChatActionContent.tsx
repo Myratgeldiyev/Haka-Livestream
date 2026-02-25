@@ -23,7 +23,7 @@ import {
 	sharedChatActionStyles,
 } from './styles'
 
-const OVERLAP_AVATAR_SIZE = 120
+export const OVERLAP_AVATAR_SIZE = 120
 
 function IconPlaceholder({ size }: { size: number }) {
 	return (
@@ -65,6 +65,136 @@ function UserAvatar({
 			)}
 
 			{!avatarUri && !avatarSource && <View style={styles.avatarFallback} />}
+		</View>
+	)
+}
+
+/** Fixed header: avatar + header icons. Shown outside ScrollView so avatar stays like before. */
+export function ChatActionContentHeader({
+	user,
+	onViewProfile,
+	onMention,
+}: Pick<ChatActionContentProps, 'user'> & {
+	onViewProfile?: () => void
+	onMention?: () => void
+}) {
+	return (
+		<View style={styles.headerSection}>
+			<View
+				style={[
+					styles.avatarOverlapWrapper,
+					{ marginTop: -OVERLAP_AVATAR_SIZE / 2 },
+				]}
+			>
+				<View style={styles.avatarContainer}>
+					<UserAvatar
+						avatarUri={user.avatarUri}
+						avatarSource={user.avatarSource}
+						size={OVERLAP_AVATAR_SIZE}
+					/>
+					{user.isVerified && (
+						<View style={styles.verifiedBadge}>
+							<IconPlaceholder size={ICON_SIZES.md} />
+						</View>
+					)}
+				</View>
+			</View>
+			<View style={styles.headerRow}>
+				<Pressable style={styles.headerIcon} onPress={onMention}>
+					<SobackoIcon />
+				</Pressable>
+				<Pressable style={styles.headerIcon} onPress={onViewProfile}>
+					<ActionUserIcon />
+				</Pressable>
+			</View>
+		</View>
+	)
+}
+
+/** Scrollable body: name, tags, stats, actions. */
+export function ChatActionContentBody({
+	user,
+	level,
+	canModerateActions = false,
+	onKickOutPress,
+	onFollow,
+	onUnfollow,
+	isFollowed,
+	onChat,
+	onSendGift,
+	onCall,
+}: ChatActionContentProps) {
+	return (
+		<View style={styles.bodySection}>
+			<View style={[styles.profileSection, styles.profileSectionAfterAvatar]}>
+				<View style={styles.nameRow}>
+					<Text style={styles.userName}>{user.name}</Text>
+					{user.isVerified && (
+						<View style={styles.verifiedIcon}>
+							<IconPlaceholder size={ICON_SIZES.md} />
+						</View>
+					)}
+				</View>
+				<Text style={styles.userId}>ID: {user.id}</Text>
+			</View>
+			<View style={styles.tagsRow}>
+				<View style={styles.badgeFemaleIcon}>
+					<FemaleIcon />
+					<Text style={styles.badgeText}>24</Text>
+				</View>
+				<View style={styles.badgeLocation}>
+					<LocationIcon />
+					<Text style={styles.badgeText}>India</Text>
+					<IndiaFlagRounded size={16} />
+				</View>
+				{level != null && <LevelBadge level={user.level} />}
+				<View style={styles.badgeSvip}>
+					<ActionUserIcon size={30} />
+					<Text style={styles.badgeText}>SVIP</Text>
+				</View>
+				<View style={styles.badgeSvip}>
+					<ActionUserIcon size={30} />
+					<Text style={styles.badgeText}>Member</Text>
+				</View>
+			</View>
+			<View style={styles.statsRow}>
+				<StatItem count={user.friendsCount || 0} label='Friends' />
+				<StatItem count={user.followingCount || 0} label='Following' />
+				<StatItem count={user.followersCount || 0} label='Followers' />
+				<StatItem count={user.visitorsCount || 0} label='Visitors' />
+			</View>
+			{canModerateActions && (
+				<>
+					<Pressable style={styles.kickOutSection} onPress={onKickOutPress}>
+						<View style={styles.kickOutIconContainer}>
+							<KickOutIcon />
+						</View>
+						<Text style={styles.kickOutText}>Kick out</Text>
+					</Pressable>
+					<View style={styles.actionsRow}>
+						<ActionButton
+							label={isFollowed ? 'Unfollow' : 'Follow'}
+							icon={isFollowed ? <ChatUnfollowIcon /> : <ChatFollowIcon />}
+							onPress={isFollowed ? onUnfollow : onFollow}
+						/>
+						<ActionButton
+							label='Chat'
+							icon={<ChatMessageIcon />}
+							onPress={onChat}
+						/>
+						<ActionButton
+							label='Send Gift'
+							icon={<ChatPrizeIcon />}
+							onPress={onSendGift}
+						/>
+						<ActionButton
+							label='Call'
+							icon={<ChatCallIcon />}
+							onPress={onCall}
+						/>
+					</View>
+				</>
+			)}
 		</View>
 	)
 }
@@ -223,14 +353,22 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 	},
+	headerSection: {
+		alignItems: 'center',
+		width: '100%',
+	},
+	bodySection: {
+		paddingBottom: SPACING.lg,
+	},
 	avatarOverlapWrapper: {
 		alignItems: 'center',
 	},
 	headerRow: {
 		flexDirection: 'row',
 		justifyContent: 'space-between',
-		paddingHorizontal: 20,
 		alignItems: 'center',
+		width: '100%',
+		paddingHorizontal: 20,
 		marginBottom: SPACING.lg,
 	},
 	avatarWrapper: {

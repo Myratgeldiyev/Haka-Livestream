@@ -1,14 +1,17 @@
 import { LIVE_STREAM } from '@/constants/liveStream'
+import { spacing } from '@/constants/spacing'
 import React from 'react'
 import {
-	Dimensions,
 	Image,
 	Pressable,
 	StyleSheet,
 	Text,
 	View,
+	useWindowDimensions,
 } from 'react-native'
 import EditIcon from '../ui/icons/live-stream/editIcon'
+
+const TOP_INFO_WIDTH = 261
 
 interface TopInfoOverlayProps {
 	/** Room name to display (e.g. "Room Name" as placeholder). */
@@ -29,11 +32,24 @@ export function TopInfoOverlay({
 	onEditPress,
 	image,
 }: TopInfoOverlayProps) {
+	const { width: screenWidth } = useWindowDimensions()
+	const overlayWidth = Math.min(
+		TOP_INFO_WIDTH,
+		screenWidth - spacing.screen.horizontal * 2,
+	)
 	const displayName = roomName ?? username
 	const imageUri = roomImageUri ?? image ?? null
 
 	return (
-		<View style={styles.container}>
+		<View
+			style={[
+				styles.container,
+				{
+					width: overlayWidth,
+					transform: [{ translateX: -overlayWidth / 2 }],
+				},
+			]}
+		>
 			<View style={styles.leftBlock}>
 				{imageUri ? (
 					<Image
@@ -57,12 +73,10 @@ export function TopInfoOverlay({
 
 const styles = StyleSheet.create({
 	container: {
-		width: '80%',
 		position: 'absolute',
 		top: 77,
 		left: '50%',
-		transform: [{ translateX: -0.5 * Dimensions.get('window').width * 0.8 }],
-		backgroundColor: LIVE_STREAM.colors.overlay,
+		backgroundColor: 'rgba(211, 210, 209, 0.55)',
 		borderRadius: 12,
 		flexDirection: 'row',
 		justifyContent: 'space-between',

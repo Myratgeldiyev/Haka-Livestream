@@ -60,22 +60,37 @@ const createAxiosInstance = (): AxiosInstance => {
 	instance.interceptors.response.use(
 		response => response,
 		async (error: AxiosError) => {
-			if (error.response?.status === 404) {
-				const baseURL = error.config?.baseURL || 'N/A'
-				const url = error.config?.url || 'N/A'
-				const method = error.config?.method?.toUpperCase() || 'N/A'
-				const fullURL = `${baseURL}${url}`
-				console.error('404 ERROR:', {
+			const status = error.response?.status
+			const baseURL = error.config?.baseURL ?? ''
+			const url = error.config?.url ?? ''
+			const method = (error.config?.method ?? 'GET').toUpperCase()
+			const fullURL = `${baseURL.replace(/\/+$/, '')}/${url.replace(/^\//, '')}`
+
+			if (status === 404) {
+				console.error('[API] 404 ERROR:', {
 					method,
-					baseURL,
-					url,
 					fullURL,
-					status: error.response.status,
-					statusText: error.response.statusText,
-					data: error.response.data,
+					status,
+					statusText: error.response?.statusText,
+					data: error.response?.data,
 				})
 			}
-			if (error.response?.status === 401) {
+			if (status === 500) {
+				const hasAuth = !!error.config?.headers?.Authorization
+				console.error('[API] 500 ERROR:', {
+					method,
+					fullURL,
+					status,
+					statusText: error.response?.statusText,
+					data: error.response?.data,
+					requestHeaders: {
+						Accept: error.config?.headers?.Accept,
+						'Content-Type': error.config?.headers?.['Content-Type'],
+						Authorization: hasAuth ? 'Bearer ***' : undefined,
+					},
+				})
+			}
+			if (status === 401) {
 				memoryToken = null
 				await tokenService.clearAuth()
 			}

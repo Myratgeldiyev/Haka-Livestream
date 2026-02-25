@@ -1,4 +1,5 @@
 import { QuickActionItem } from '@/components/profile/QuickActionItem'
+import { router } from 'expo-router'
 import React from 'react'
 import { DimensionValue, Image, StyleSheet, View } from 'react-native'
 
@@ -35,18 +36,20 @@ export function QuickActions() {
 			icon: <Image source={require('../../assets/images/Store.png')} />,
 			gradient: profileColors.gradient.store,
 			bgColor: '#0F93F5',
+			onPress: () => router.push('/(main)/store'),
 		},
 	]
 
 	return (
 		<View style={styles.container}>
-			{actions.map((action, idx) => (
+			{actions.map((action) => (
 				<View key={action.id} style={styles.itemWrapper}>
 					<QuickActionItem
 						bgColor={action.bgColor}
 						label={action.label}
 						icon={action.icon}
 						left={action.left as DimensionValue}
+						onPress={action.onPress}
 					/>
 				</View>
 			))}

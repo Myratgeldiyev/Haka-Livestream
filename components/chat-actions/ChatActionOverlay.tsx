@@ -12,9 +12,14 @@ import {
 	StatusBar,
 	StyleSheet,
 	View,
+	ScrollView,
 } from 'react-native'
 import Animated from 'react-native-reanimated'
-import { ChatActionContent } from './ChatActionContent'
+import {
+	ChatActionContent,
+	ChatActionContentHeader,
+	ChatActionContentBody,
+} from './ChatActionContent'
 import { useChatActionAnimation } from './hooks/useChatActionAnimation'
 import { KickOutContent } from './KickOutContent'
 import { COLORS, OVERLAY_HEIGHT, sharedChatActionStyles } from './styles'
@@ -176,22 +181,45 @@ export function ChatActionOverlay({
 				>
 					<Pressable style={styles.sheetContent} onPress={() => {}}>
 						{currentView === 'main' ? (
-							<ChatActionContent
-								user={user}
-								level={level}
-								canModerateActions={canModerateActions}
-								onKickOutPress={handleKickOutPress}
-								onFollow={handleFollow}
-								onUnfollow={handleUnfollow}
-								isFollowed={isFollowed}
-								onChat={handleChat}
-								onSendGift={handleSendGift}
-								onCall={handleCall}
-								onViewProfile={handleViewProfile}
-								onMention={handleMention}
-							/>
+							<>
+								<View style={styles.fixedHeader}>
+									<ChatActionContentHeader
+										user={user}
+										onViewProfile={handleViewProfile}
+										onMention={handleMention}
+									/>
+								</View>
+								<ScrollView
+									style={styles.scroll}
+									contentContainerStyle={styles.scrollContent}
+									showsVerticalScrollIndicator={false}
+									bounces={false}
+								>
+									<ChatActionContentBody
+										user={user}
+										level={level}
+										canModerateActions={canModerateActions}
+										onKickOutPress={handleKickOutPress}
+										onFollow={handleFollow}
+										onUnfollow={handleUnfollow}
+										isFollowed={isFollowed}
+										onChat={handleChat}
+										onSendGift={handleSendGift}
+										onCall={handleCall}
+										onViewProfile={handleViewProfile}
+										onMention={handleMention}
+									/>
+								</ScrollView>
+							</>
 						) : (
-							<KickOutContent user={user} onKickOut={handleKickOut} />
+							<ScrollView
+								style={styles.scroll}
+								contentContainerStyle={styles.scrollContent}
+								showsVerticalScrollIndicator={false}
+								bounces={false}
+							>
+								<KickOutContent user={user} onKickOut={handleKickOut} />
+							</ScrollView>
 						)}
 					</Pressable>
 				</Animated.View>
@@ -203,5 +231,14 @@ export function ChatActionOverlay({
 const styles = StyleSheet.create({
 	sheetContent: {
 		flex: 1,
+	},
+	fixedHeader: {
+		flexGrow: 0,
+	},
+	scroll: {
+		flex: 1,
+	},
+	scrollContent: {
+		paddingBottom: 16,
 	},
 })

@@ -137,7 +137,10 @@ const styles = StyleSheet.create({
 		fontWeight: '600',
 	},
 	scroll: { maxHeight: 204 },
-	grid: { flexDirection: 'row', flexWrap: 'wrap' },
+	grid: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+	},
 	emojiCell: {
 		width: EMOJI_SIZE,
 		height: EMOJI_SIZE,

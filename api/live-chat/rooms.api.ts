@@ -1,5 +1,5 @@
 import type { LiveStreamDetailsResponse } from '@/api/live-stream/lives.types'
-import { apiClient } from '../axios'
+import { apiClient, getAuthToken } from '../axios'
 import { ENDPOINTS } from '../endpoints'
 import {
 	AddUserAsAdminRequest,
@@ -294,7 +294,11 @@ export const roomsApi = {
 	},
 
 	getFollowingRooms: async (): Promise<LiveStreamDetailsResponse[]> => {
-		const { data } = await apiClient.get(ENDPOINTS.ROOMS.FOLLOWING_ROOMS)
+		const token = getAuthToken()
+		const headers = token ? { Authorization: `Bearer ${token}` } : undefined
+		const { data } = await apiClient.get(ENDPOINTS.ROOMS.FOLLOWING_ROOMS, {
+			headers,
+		})
 		return data
 	},
 

@@ -10,6 +10,7 @@ export const ENDPOINTS = {
 		COMPLETE_SIGNUP: 'auth/complete-signup/',
 		LOGOUT: 'auth/logout/',
 		USER_ID_LOGIN: 'auth/login/',
+		GOOGLE_LOGIN: 'auth/google/',
 	},
 	PROFILE: {
 		MY_PROFILE: 'users/myprofile/',

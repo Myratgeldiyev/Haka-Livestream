@@ -9,7 +9,7 @@ import {
 } from 'react-native'
 
 import { useGoogleAuth } from '@/app/(auth)/googleAuth'
-import { router } from 'expo-router'
+import { useAuthStore } from '@/store/auth.store'
 import Svg, { Path } from 'react-native-svg'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
@@ -43,26 +43,27 @@ const GoogleIcon = () => (
 )
 export function GoogleLoginButton() {
 	const { request, response, signIn } = useGoogleAuth()
+	const googleLogin = useAuthStore((s) => s.googleLogin)
+	const isGoogleLoginLoading = useAuthStore((s) => s.isGoogleLoginLoading)
 
 	useEffect(() => {
-		if (response?.type === 'success') {
-			const { authentication } = response
-
-			if (!authentication?.accessToken) {
-				Alert.alert('Google Login Failed')
-				return
-			}
-
-			console.log('GOOGLE ACCESS TOKEN:', authentication.accessToken)
-
-			router.replace('/')
+		if (response?.type !== 'success') return
+		const { authentication } = response
+		const token =
+			authentication?.idToken ?? authentication?.accessToken ?? ''
+		if (!token) {
+			Alert.alert('Google Login Failed')
+			return
 		}
-	}, [response])
+		googleLogin(token).catch((err: { message?: string }) => {
+			Alert.alert('Google Login Failed', err?.message ?? 'Something went wrong')
+		})
+	}, [response, googleLogin])
 
 	return (
 		<Pressable
 			style={styles.button}
-			disabled={!request}
+			disabled={!request || isGoogleLoginLoading}
 			onPress={() => signIn()}
 		>
 			<View style={styles.icon}>

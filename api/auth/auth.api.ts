@@ -5,6 +5,8 @@ import {
 	ApiError,
 	CompleteSignupPayload,
 	CompleteSignupResponse,
+	GoogleLoginPayload,
+	GoogleLoginResponse,
 	LogoutResponse,
 	RequestOtpPayload,
 	RequestOtpResponse,
@@ -105,6 +107,19 @@ export const authApi = {
 		try {
 			const res = await apiClient.post<UserIdLoginResponse>(
 				ENDPOINTS.AUTH.USER_ID_LOGIN,
+				payload
+			)
+			return res.data
+		} catch (e) {
+			throw parseApiError(e)
+		}
+	},
+	googleLogin: async (
+		payload: GoogleLoginPayload
+	): Promise<GoogleLoginResponse> => {
+		try {
+			const res = await apiClient.post<GoogleLoginResponse>(
+				ENDPOINTS.AUTH.GOOGLE_LOGIN,
 				payload
 			)
 			return res.data

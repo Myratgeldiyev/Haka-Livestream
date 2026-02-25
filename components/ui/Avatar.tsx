@@ -7,7 +7,7 @@ interface AvatarProps {
 }
 
 export function Avatar({ src }: AvatarProps) {
-	const avatarSize = 88
+	const avatarSize = 78
 
 	return (
 		<View

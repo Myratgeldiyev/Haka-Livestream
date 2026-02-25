@@ -59,5 +59,5 @@ const styles = StyleSheet.create({
 		...StyleSheet.absoluteFillObject,
 		backgroundColor: 'rgba(0,0,0,0.4)',
 	},
-	panelWrap: { position: 'absolute', left: 16, right: 16 },
+	panelWrap: { position: 'absolute', left: 0, right: 0 },
 })

@@ -25,6 +25,9 @@ interface AuthState {
 	completeSignupError: string | null
 	completeSignupSuccess: boolean
 
+	isGoogleLoginLoading: boolean
+	googleLoginError: string | null
+
 	requestOtp: (phoneNumber: string) => Promise<void>
 	verifyOtp: (phoneNumber: string, otpCode: string) => Promise<void>
 	completeSignup: (
@@ -33,6 +36,7 @@ interface AuthState {
 		gender: Gender,
 		country: string
 	) => Promise<void>
+	googleLogin: (googleToken: string) => Promise<void>
 	logout: () => Promise<void>
 	initializeAuth: () => Promise<void>
 	resetOtpState: () => void
@@ -59,6 +63,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 	isCompletingSignup: false,
 	completeSignupError: null,
 	completeSignupSuccess: false,
+
+	isGoogleLoginLoading: false,
+	googleLoginError: null,
 
 	initializeAuth: async () => {
 		const token = await tokenService.getToken()
@@ -182,6 +189,42 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 				completeSignupError: apiError.message,
 				completeSignupSuccess: false,
 			})
+		}
+	},
+
+	googleLogin: async (googleToken: string) => {
+		set({
+			isGoogleLoginLoading: true,
+			googleLoginError: null,
+		})
+		try {
+			const response = await authApi.googleLogin({ token: googleToken })
+			const access = response.access
+			const user: VerifyOtpUser = {
+				user_id: response.user.id,
+				username: response.user.username ?? null,
+				phone_number: '',
+			}
+			await tokenService.setToken(access)
+			await tokenService.setUser(user)
+			setAuthToken(access)
+			const isNewUser = response.isNewUser ?? false
+			set({
+				isGoogleLoginLoading: false,
+				googleLoginError: null,
+				accessToken: access,
+				user,
+				isAuthenticated: true,
+				isNewUser,
+			})
+			navigationService.handlePostOtpVerify(isNewUser)
+		} catch (error) {
+			const apiError = error as ApiError
+			set({
+				isGoogleLoginLoading: false,
+				googleLoginError: apiError.message,
+			})
+			throw apiError
 		}
 	},
 

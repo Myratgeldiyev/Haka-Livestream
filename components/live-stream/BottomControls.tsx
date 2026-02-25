@@ -4,6 +4,9 @@ import { router } from 'expo-router'
 import React from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import StreamGameIcon from '../ui/icons/live-stream/streamGameIcon'
+import EffectIcon from '../ui/icons/live-tabs/EffectIcon'
+import LiveConsoleIcon from '../ui/icons/live-tabs/LiveConsoleIcon'
+import SeatLiveIcon from '../ui/icons/live-tabs/SeatLiveIcon'
 
 function GameButton() {
 	return <StreamGameIcon />
@@ -28,7 +31,9 @@ export function BottomControls({
 			router.replace(`/live/${liveStream.id}`)
 		} catch (e) {
 			const message =
-				e instanceof Error ? e.message : 'Failed to start stream. Please try again.'
+				e instanceof Error
+					? e.message
+					: 'Failed to start stream. Please try again.'
 			Alert.alert('Error', message)
 		}
 	}
@@ -38,9 +43,17 @@ export function BottomControls({
 
 	return (
 		<View style={styles.container}>
-			<Pressable style={styles.centerButton} onPress={onCenterPress}>
-				<GameButton />
-			</Pressable>
+			<View style={{ flexDirection: 'row', gap: 20, alignItems: 'center' }}>
+				<Pressable style={styles.centerButton}>
+					<EffectIcon />
+				</Pressable>
+				<Pressable style={styles.centerButton}>
+					<SeatLiveIcon />
+				</Pressable>
+				<Pressable style={styles.centerButton} onPress={onCenterPress}>
+					<LiveConsoleIcon />
+				</Pressable>
+			</View>
 
 			<Pressable
 				style={styles.startButton}
@@ -67,11 +80,11 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 	},
 	startButton: {
-		marginTop: LIVE_STREAM.spacing.bottomButtonMargin,
+		marginTop: 12,
 		width: LIVE_STREAM.sizes.bottomButton.width,
 		height: LIVE_STREAM.sizes.bottomButton.height,
 		backgroundColor: LIVE_STREAM.colors.primary,
-		borderRadius: LIVE_STREAM.sizes.borderRadius,
+		borderRadius: 16,
 		justifyContent: 'center',
 		alignItems: 'center',
 	},

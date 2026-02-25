@@ -69,7 +69,6 @@ const styles = StyleSheet.create({
 
 	textContainer: {
 		flex: 1,
-		gap: spacing.xs,
 		position: 'relative',
 	},
 

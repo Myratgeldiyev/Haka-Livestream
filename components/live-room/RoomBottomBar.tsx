@@ -2,12 +2,13 @@ import { EmojiPickerOverlay } from '@/components/emoji'
 import { MessageInboxSheet } from '@/components/message/inbox-sheet/MessageInboxSheet'
 import { spacing } from '@/constants/spacing'
 import { fontSizes, lineHeights } from '@/constants/typography'
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
 	Keyboard,
 	Platform,
 	Pressable,
 	StyleSheet,
+	Text,
 	TextInput,
 	View,
 	useWindowDimensions,
@@ -49,6 +50,8 @@ interface RoomBottomBarProps {
 	streamIdForMute?: string
 	/** Called when user picks an emoji in the picker (e.g. to show on seat avatar). */
 	onEmojiPicked?: (emojiId: string) => void
+	/** When provided, parent manages a separate absolute composer; local input should just open it. */
+	onOpenComposer?: () => void
 }
 
 export function RoomBottomBar({
@@ -66,23 +69,56 @@ export function RoomBottomBar({
 	userRole,
 	streamIdForMute,
 	onEmojiPicked,
+	onOpenComposer,
 }: RoomBottomBarProps) {
 	const { width: screenWidth } = useWindowDimensions()
 	const [text, setText] = useState('')
+	const [isFocused, setIsFocused] = useState(false)
 	const [emojiVisible, setEmojiVisible] = useState(false)
 	const [roomPlayVisible, setRoomPlayVisible] = useState(false)
 	const [giftOverlayVisible, setGiftOverlayVisible] = useState(false)
 	const [messageInboxVisible, setMessageInboxVisible] = useState(false)
+	const [keyboardVisible, setKeyboardVisible] = useState(false)
 
-	// Responsive: smaller buttons and input on narrow screens so bar never overflows
-	const inputHeight = Math.min(INPUT_HEIGHT_BASE, Math.max(30, Math.floor(screenWidth * 0.09)))
-	const inputMaxWidth = Math.min(screenWidth * 0.38, 140)
-	const containerPaddingH = Math.max(spacing.sm, Math.min(spacing.md, screenWidth * 0.03))
-	const containerPaddingV = Platform.select({ ios: spacing.md, android: spacing.sm }) ?? spacing.md
-	const actionIconSize = Math.min(24, Math.max(20, Math.floor(screenWidth * 0.055)))
-	const muteIconSize = Math.min(28, Math.max(24, Math.floor(screenWidth * 0.065)))
-	const iconBtnPadding = Platform.select({ ios: 2, android: 4 }) ?? 2
-	const iconBtnMinWidth = actionIconSize + 6
+	useEffect(() => {
+		const showSub = Keyboard.addListener('keyboardDidShow', () =>
+			setKeyboardVisible(true),
+		)
+		const hideSub = Keyboard.addListener('keyboardDidHide', () =>
+			setKeyboardVisible(false),
+		)
+		return () => {
+			showSub.remove()
+			hideSub.remove()
+		}
+	}, [])
+
+	const isVerySmallWidth = screenWidth < 360
+
+	const inputHeight = Math.min(
+		INPUT_HEIGHT_BASE,
+		Math.max(30, Math.floor(screenWidth * 0.09)),
+	)
+	const inputMaxWidth = Math.min(screenWidth * 0.6, 220)
+	const containerPaddingH = Math.max(
+		spacing.sm,
+		Math.min(spacing.md, screenWidth * 0.03),
+	)
+	const containerPaddingV =
+		Platform.select({ ios: spacing.md, android: spacing.sm }) ?? spacing.md
+	const actionIconSize = isVerySmallWidth
+		? 16
+		: Math.min(22, Math.max(18, Math.floor(screenWidth * 0.045)))
+	const muteIconSize = isVerySmallWidth
+		? 22
+		: Math.min(28, Math.max(24, Math.floor(screenWidth * 0.06)))
+	const iconBtnPadding =
+		(isVerySmallWidth ? 1 : undefined) ??
+		Platform.select({ ios: 2, android: 3 }) ??
+		2
+	const iconBtnMinWidth = actionIconSize + (isVerySmallWidth ? 1 : 3)
+
+	const isExpandedComposer = isFocused || keyboardVisible
 
 	const handleRoomPlayOpen = () => setRoomPlayVisible(true)
 	const handleRoomPlayClose = () => setRoomPlayVisible(false)
@@ -99,81 +135,215 @@ export function RoomBottomBar({
 
 	const handleEmojiSelect = useCallback((_placeholder: string) => {}, [])
 
-	const dynamicStyles = useMemo(
-		() => ({
+	const dynamicStyles = useMemo(() => {
+		const containerHorizontalPadding = isExpandedComposer
+			? 0
+			: containerPaddingH
+
+		const containerVerticalPadding = isExpandedComposer ? 0 : containerPaddingV
+
+		return {
 			container: {
-				paddingHorizontal: containerPaddingH,
-				paddingVertical: containerPaddingV,
+				paddingHorizontal: containerHorizontalPadding,
+				paddingVertical: containerVerticalPadding,
 				gap: ROW_GAP,
 				minHeight: inputHeight + 2 * 8,
 			},
 			inputContainer: {
 				height: inputHeight,
-				maxWidth: inputMaxWidth,
+
+				maxWidth: isExpandedComposer ? undefined : inputMaxWidth,
 				borderRadius: inputHeight / 2,
 			},
 			iconBtn: {
 				padding: iconBtnPadding,
 				minWidth: iconBtnMinWidth,
 			},
-		}),
-		[
-			containerPaddingH,
-			containerPaddingV,
-			inputHeight,
-			inputMaxWidth,
-			iconBtnPadding,
-			iconBtnMinWidth,
-		],
-	)
+		}
+	}, [
+		containerPaddingH,
+		containerPaddingV,
+		inputHeight,
+		inputMaxWidth,
+		iconBtnPadding,
+		iconBtnMinWidth,
+		isExpandedComposer,
+	])
+
+	if (onOpenComposer) {
+		return (
+			<View style={[styles.container, dynamicStyles.container]}>
+				<View style={styles.chairIconWrap}>
+					{isUserOnSeat ? (
+						<Pressable
+							onPress={onToggleMute}
+							style={styles.muteIconWrap}
+							hitSlop={8}
+						>
+							{isMuted ? (
+								<MicMutedIcon width={muteIconSize} height={muteIconSize} />
+							) : (
+								<MicSpeakIcon width={muteIconSize} height={muteIconSize} />
+							)}
+						</Pressable>
+					) : onTakeFirstAvailableSeat ? (
+						<Pressable
+							onPress={onTakeFirstAvailableSeat}
+							style={styles.muteIconWrap}
+							hitSlop={8}
+						>
+							<ChairIcon />
+						</Pressable>
+					) : (
+						<Pressable
+							onPress={onToggleMute}
+							style={styles.muteIconWrap}
+							hitSlop={8}
+						>
+							{isMuted ? (
+								<MicMutedIcon width={muteIconSize} height={muteIconSize} />
+							) : (
+								<MicSpeakIcon width={muteIconSize} height={muteIconSize} />
+							)}
+						</Pressable>
+					)}
+				</View>
+
+				<View style={[styles.inputContainer, dynamicStyles.inputContainer]}>
+					<Pressable style={styles.fakeInputPressable} onPress={onOpenComposer}>
+						<Text style={styles.fakeInputPlaceholder}>Hi...</Text>
+					</Pressable>
+					<Pressable
+						onPress={() => {
+							Keyboard.dismiss()
+							setEmojiVisible(prev => !prev)
+						}}
+						style={styles.emojiIconWrap}
+						hitSlop={8}
+					>
+						<EmojiIcon />
+					</Pressable>
+				</View>
+
+				<View style={styles.actionsRow}>
+					<Pressable
+						style={[styles.iconBtn, dynamicStyles.iconBtn]}
+						onPress={handleRoomPlayOpen}
+					>
+						<AppIcon />
+					</Pressable>
+					<Pressable
+						style={[styles.iconBtn, dynamicStyles.iconBtn]}
+						onPress={() => onRoomPKRandomMatch?.(0)}
+					>
+						<PkIconChat />
+					</Pressable>
+					<Pressable style={[styles.iconBtn, dynamicStyles.iconBtn]}>
+						<ConsoleIcon />
+					</Pressable>
+					<Pressable style={[styles.iconBtn, dynamicStyles.iconBtn]}>
+						<ChatMessageIcon />
+					</Pressable>
+					<Pressable
+						style={[styles.iconBtn, dynamicStyles.iconBtn]}
+						onPress={handleGiftOverlayOpen}
+					>
+						<PrizeIcon />
+					</Pressable>
+				</View>
+
+				<GiftSendOverlay
+					visible={giftOverlayVisible}
+					onClose={handleGiftOverlayClose}
+				/>
+				<RoomPlayOverlay
+					visible={roomPlayVisible}
+					onClose={handleRoomPlayClose}
+					roomId={roomId}
+					userRole={userRole}
+					streamIdForMute={streamIdForMute}
+					publicMsgEnabled={publicMsgEnabled}
+					onTogglePublicMsg={onTogglePublicMsg}
+					onOpenMessageInbox={() => setMessageInboxVisible(true)}
+					onOpenMusicPlayer={onOpenMusicPlayer}
+					onRoomPKRandomMatch={onRoomPKRandomMatch}
+					onCalculatorStart={onCalculatorStart}
+				/>
+				<MessageInboxSheet
+					visible={messageInboxVisible}
+					onClose={() => setMessageInboxVisible(false)}
+				/>
+				<EmojiPickerOverlay
+					visible={emojiVisible}
+					onEmojiSelect={handleEmojiSelect}
+					onEmojiPicked={onEmojiPicked}
+					onClose={() => setEmojiVisible(false)}
+				/>
+			</View>
+		)
+	}
 
 	return (
 		<View style={[styles.container, dynamicStyles.container]}>
-			<View style={styles.chairIconWrap}>
-				{isUserOnSeat ? (
-					<Pressable
-						onPress={onToggleMute}
-						style={styles.muteIconWrap}
-						hitSlop={8}
-					>
-						{isMuted ? (
-							<MicMutedIcon width={muteIconSize} height={muteIconSize} />
-						) : (
-							<MicSpeakIcon width={muteIconSize} height={muteIconSize} />
-						)}
-					</Pressable>
-				) : onTakeFirstAvailableSeat ? (
-					<Pressable
-						onPress={onTakeFirstAvailableSeat}
-						style={styles.muteIconWrap}
-						hitSlop={8}
-					>
-						<ChairIcon />
-					</Pressable>
-				) : (
-					<Pressable
-						onPress={onToggleMute}
-						style={styles.muteIconWrap}
-						hitSlop={8}
-					>
-						{isMuted ? (
-							<MicMutedIcon width={muteIconSize} height={muteIconSize} />
-						) : (
-							<MicSpeakIcon width={muteIconSize} height={muteIconSize} />
-						)}
-					</Pressable>
-				)}
-			</View>
+			{!isExpandedComposer && (
+				<View style={styles.chairIconWrap}>
+					{isUserOnSeat ? (
+						<Pressable
+							onPress={onToggleMute}
+							style={styles.muteIconWrap}
+							hitSlop={8}
+						>
+							{isMuted ? (
+								<MicMutedIcon width={muteIconSize} height={muteIconSize} />
+							) : (
+								<MicSpeakIcon width={muteIconSize} height={muteIconSize} />
+							)}
+						</Pressable>
+					) : onTakeFirstAvailableSeat ? (
+						<Pressable
+							onPress={onTakeFirstAvailableSeat}
+							style={styles.muteIconWrap}
+							hitSlop={8}
+						>
+							<ChairIcon />
+						</Pressable>
+					) : (
+						<Pressable
+							onPress={onToggleMute}
+							style={styles.muteIconWrap}
+							hitSlop={8}
+						>
+							{isMuted ? (
+								<MicMutedIcon width={muteIconSize} height={muteIconSize} />
+							) : (
+								<MicSpeakIcon width={muteIconSize} height={muteIconSize} />
+							)}
+						</Pressable>
+					)}
+				</View>
+			)}
 
-			<View style={[styles.inputContainer, dynamicStyles.inputContainer]}>
+			<View
+				style={[
+					styles.inputContainer,
+					dynamicStyles.inputContainer,
+					isExpandedComposer && styles.inputContainerExpanded,
+				]}
+			>
 				<TextInput
-					style={styles.input}
-					placeholder='Hi...'
-					placeholderTextColor='rgba(255, 255, 255, 0.5)'
+					style={[styles.input, isExpandedComposer && styles.inputExpanded]}
+					placeholder={isExpandedComposer ? 'Type something...' : 'Hi...'}
+					placeholderTextColor={
+						isExpandedComposer
+							? 'rgba(0, 0, 0, 0.4)'
+							: 'rgba(255, 255, 255, 0.5)'
+					}
 					value={text}
 					onChangeText={setText}
 					onSubmitEditing={handleSend}
 					returnKeyType='send'
+					onFocus={() => setIsFocused(true)}
+					onBlur={() => setIsFocused(false)}
 				/>
 				<Pressable
 					onPress={() => {
@@ -185,28 +355,41 @@ export function RoomBottomBar({
 				>
 					<EmojiIcon />
 				</Pressable>
+				{isExpandedComposer && (
+					<Pressable onPress={handleSend} style={styles.sendButton} hitSlop={8}>
+						<Text style={styles.sendButtonText}>Send</Text>
+					</Pressable>
+				)}
 			</View>
 
-			<View style={styles.actionsRow}>
-				<Pressable style={[styles.iconBtn, dynamicStyles.iconBtn]}>
-					<AppIcon />
-				</Pressable>
-				<Pressable
-					style={[styles.iconBtn, dynamicStyles.iconBtn]}
-					onPress={() => onRoomPKRandomMatch?.(0)}
-				>
-					<PkIconChat />
-				</Pressable>
-				<Pressable style={[styles.iconBtn, dynamicStyles.iconBtn]} onPress={handleRoomPlayOpen}>
-					<ConsoleIcon />
-				</Pressable>
-				<Pressable style={[styles.iconBtn, dynamicStyles.iconBtn]}>
-					<ChatMessageIcon />
-				</Pressable>
-				<Pressable style={[styles.iconBtn, dynamicStyles.iconBtn]} onPress={handleGiftOverlayOpen}>
-					<PrizeIcon />
-				</Pressable>
-			</View>
+			{!isExpandedComposer && (
+				<View style={styles.actionsRow}>
+					<Pressable
+						style={[styles.iconBtn, dynamicStyles.iconBtn]}
+						onPress={handleRoomPlayOpen}
+					>
+						<AppIcon />
+					</Pressable>
+					<Pressable
+						style={[styles.iconBtn, dynamicStyles.iconBtn]}
+						onPress={() => onRoomPKRandomMatch?.(0)}
+					>
+						<PkIconChat />
+					</Pressable>
+					<Pressable style={[styles.iconBtn, dynamicStyles.iconBtn]}>
+						<ConsoleIcon />
+					</Pressable>
+					<Pressable style={[styles.iconBtn, dynamicStyles.iconBtn]}>
+						<ChatMessageIcon />
+					</Pressable>
+					<Pressable
+						style={[styles.iconBtn, dynamicStyles.iconBtn]}
+						onPress={handleGiftOverlayOpen}
+					>
+						<PrizeIcon />
+					</Pressable>
+				</View>
+			)}
 			<GiftSendOverlay
 				visible={giftOverlayVisible}
 				onClose={handleGiftOverlayClose}
@@ -268,6 +451,25 @@ const styles = StyleSheet.create({
 		flex: 1,
 		minWidth: 0,
 	},
+	inputContainerExpanded: {
+		backgroundColor: '#FFFFFF',
+		borderWidth: 0,
+		borderRadius: INPUT_HEIGHT_BASE / 2,
+	},
+	sendButton: {
+		marginLeft: 8,
+		width: 32,
+		height: 32,
+		borderRadius: 16,
+		backgroundColor: '#00D25B',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	sendButtonText: {
+		fontSize: fontSizes.md,
+		color: '#ffffff',
+		fontWeight: '600',
+	},
 	emojiIconWrap: {
 		padding: 4,
 		justifyContent: 'center',
@@ -281,6 +483,17 @@ const styles = StyleSheet.create({
 		color: '#FFFFFF',
 		padding: 0,
 		paddingHorizontal: 4,
+	},
+	inputExpanded: {
+		color: '#111111',
+	},
+	fakeInputPressable: {
+		flex: 1,
+		justifyContent: 'center',
+	},
+	fakeInputPlaceholder: {
+		fontSize: fontSizes.md,
+		color: 'rgba(255, 255, 255, 0.6)',
 	},
 	actionsRow: {
 		flexShrink: 0,

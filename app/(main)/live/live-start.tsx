@@ -7,17 +7,23 @@ import {
 	TopInfoOverlay,
 } from '@/components/live-stream'
 import type { RoomImagePayload } from '@/components/live-stream/EditInfoBottomSheet'
-import { LiveStreamTab } from '@/constants/liveStream'
+import { LIVE_STREAM, LiveStreamTab } from '@/constants/liveStream'
+import { spacing } from '@/constants/spacing'
 import { useLiveStreamStore } from '@/store/liveStream.store'
+import { useFocusEffect } from '@react-navigation/native'
 import { router } from 'expo-router'
 import React, { useCallback, useState } from 'react'
 import { Alert, ImageBackground, StyleSheet, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const DEFAULT_ROOM_NAME = 'Room Name'
 const DEFAULT_ANNOUNCEMENT = 'announcement'
 
+const TABS_BLOCK_HEIGHT = 70
+
 export default function LiveStreamScreen() {
-	const [, setActiveTab] = useState<LiveStreamTab>('Live')
+	const insets = useSafeAreaInsets()
+	const [activeTab, setActiveTab] = useState<LiveStreamTab>('Live')
 	const [editSheetVisible, setEditSheetVisible] = useState(false)
 	const [roomName, setRoomName] = useState(DEFAULT_ROOM_NAME)
 	const [announcement, setAnnouncement] = useState(DEFAULT_ANNOUNCEMENT)
@@ -28,6 +34,12 @@ export default function LiveStreamScreen() {
 	const liveStream = useLiveStreamStore(s => s.liveStream)
 	const { startStream, uploadRoomImage, updateStream, leaveRoom, clearStream } =
 		useLiveStreamStore()
+
+	useFocusEffect(
+		useCallback(() => {
+			setActiveTab('Live')
+		}, []),
+	)
 
 	const handleTabChange = (tab: LiveStreamTab) => {
 		if (tab === 'Chat') {
@@ -121,15 +133,30 @@ export default function LiveStreamScreen() {
 						onEditPress={handleEditPress}
 					/>
 					<RightControlPanel />
-					<View style={styles.bottomWrapper}>
+					<View
+						style={[
+							styles.bottomWrapper,
+							{
+								bottom:
+									insets.bottom +
+									LIVE_STREAM.spacing.bottomTabsOffset +
+									TABS_BLOCK_HEIGHT,
+							},
+						]}
+					>
 						<BottomControls
 							onCenterPress={handleCenterPress}
 							onGoToLive={handleGoToLive}
 							isGoingLive={isGoingLive}
 						/>
 					</View>
-					<View style={styles.tabsWrapper}>
-						<LiveChatTabs onTabChange={handleTabChange} />
+					<View
+						style={[
+							styles.tabsWrapper,
+							{ bottom: insets.bottom + LIVE_STREAM.spacing.bottomTabsOffset },
+						]}
+					>
+						<LiveChatTabs activeTab={activeTab} onTabChange={handleTabChange} />
 					</View>
 				</CameraView>
 			</ImageBackground>
@@ -156,16 +183,16 @@ const styles = StyleSheet.create({
 	},
 	bottomWrapper: {
 		position: 'absolute',
-		bottom: 100,
 		left: 0,
 		right: 0,
 		alignItems: 'center',
+		paddingHorizontal: spacing.screen.horizontal,
 	},
 	tabsWrapper: {
 		position: 'absolute',
-		bottom: 40,
 		left: 0,
 		right: 0,
 		alignItems: 'center',
+		paddingHorizontal: spacing.screen.horizontal,
 	},
 })

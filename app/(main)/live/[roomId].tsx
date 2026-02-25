@@ -606,7 +606,9 @@ export default function LiveRoomScreen() {
 									<ChatList
 										messages={streamMessages}
 										statusText={undefined}
-										canModerateActions={userRole === 'owner' || userRole === 'admin'}
+										canModerateActions={
+											userRole === 'owner' || userRole === 'admin'
+										}
 									/>
 								) : null}
 							</View>
@@ -659,7 +661,7 @@ export default function LiveRoomScreen() {
 											userRole={userRole}
 											isFollowing={isFollowing}
 											onToggleFollow={handleToggleFollowStream}
-											passwordContextMode="live"
+											passwordContextMode='live'
 										/>
 										<TopRightControls
 											roomId={isStreamMode ? '' : (roomId ?? '')}
@@ -731,7 +733,6 @@ export default function LiveRoomScreen() {
 							)
 						}
 
-						// Viewer: show remote video (Agora owner UID) when available, otherwise ImageBackground
 						if (ownerAgoraUid && ownerAgoraUid > 0) {
 							return (
 								<RemoteVideoView
@@ -745,7 +746,6 @@ export default function LiveRoomScreen() {
 							)
 						}
 
-						// Viewer: owner video unavailable or no owner - show ImageBackground
 						return (
 							<ImageBackground
 								key='live-viewer-background'
@@ -807,7 +807,7 @@ export default function LiveRoomScreen() {
 									})()}
 									onEditPress={() => setEditVisible(true)}
 									userRole={userRole}
-									passwordContextMode="live"
+									passwordContextMode='live'
 								/>
 								<TopRightControls
 									roomId={isStreamMode ? '' : (roomId ?? '')}

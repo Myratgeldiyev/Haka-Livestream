@@ -7,21 +7,37 @@ const SEAT_ITEM_SIZE_MIN = 44
 const SEAT_ITEM_SIZE_MAX = 62
 const SEAT_SECTION_H_PADDING = 0
 
-/** Prefer larger gaps on iOS; Android stays compact. If layout would hit min size, use safe gaps. */
+const TARGET_ROW_ITEM_GAP = 35
+const ROW_GAP = 20
+
 function getGaps(windowWidth: number, maxCols: number) {
 	const availableWidth = windowWidth - SEAT_SECTION_H_PADDING
-	const largeColGap = Platform.OS === 'ios' ? spacing.lg : spacing.md
-	const largeRowGap = Platform.OS === 'ios' ? spacing.lg : spacing.md
-	const safeColGap = spacing.md
-	const safeRowGap = spacing.md
+	const minGap = spacing.xs
+	const maxGap = maxCols >= 5 ? 18 : TARGET_ROW_ITEM_GAP
 
-	const sizeWithLargeGaps = Math.floor(
-		(availableWidth - (maxCols - 1) * largeColGap) / maxCols,
-	)
-	const wouldHitMin = sizeWithLargeGaps < SEAT_ITEM_SIZE_MIN
+	if (maxCols <= 1 || availableWidth <= 0) {
+		return { colGap: minGap, rowGap: ROW_GAP }
+	}
 
-	const colGap = wouldHitMin ? safeColGap : largeColGap
-	const rowGap = wouldHitMin ? safeRowGap : largeRowGap
+	let colGap = maxGap
+	let seatSize = (availableWidth - (maxCols - 1) * colGap) / maxCols
+
+	if (seatSize < SEAT_ITEM_SIZE_MIN) {
+		const totalGap = availableWidth - SEAT_ITEM_SIZE_MIN * maxCols
+		const possibleGap =
+			maxCols > 1 ? Math.max(minGap, totalGap / (maxCols - 1)) : minGap
+		colGap = Math.max(minGap, Math.min(maxGap, possibleGap))
+		seatSize = (availableWidth - (maxCols - 1) * colGap) / maxCols
+	} else if (seatSize > SEAT_ITEM_SIZE_MAX) {
+		const totalGap = availableWidth - SEAT_ITEM_SIZE_MAX * maxCols
+		const possibleGap = maxCols > 1 ? totalGap / (maxCols - 1) : maxGap
+		colGap = Math.max(minGap, Math.min(maxGap, possibleGap))
+		seatSize = (availableWidth - (maxCols - 1) * colGap) / maxCols
+	}
+
+	const rowGapBase = Math.min(ROW_GAP, colGap * 0.7)
+	const rowGap = Math.max(spacing.sm, rowGapBase)
+
 	return { colGap, rowGap }
 }
 
@@ -67,6 +83,8 @@ interface SeatGridProps {
 
 function getRowsForSeatCount(seatCount: number): number[] | null {
 	if (seatCount === 10) return [2, 4, 4]
+	if (seatCount === 15) return [5, 5, 5]
+	if (seatCount === 20) return [5, 5, 5, 5]
 	if (seatCount === 5) return [2, 3]
 	return null
 }
@@ -109,7 +127,6 @@ export function SeatGrid({
 		return clamped
 	}, [windowWidth, rowsConfig, colGap])
 
-	// #region agent log
 	useEffect(() => {
 		fetch('http://127.0.0.1:7243/ingest/5dc12a94-a263-4786-a3a6-a66ee4516557', {
 			method: 'POST',
@@ -131,7 +148,15 @@ export function SeatGrid({
 				hypothesisId: 'H2_H3',
 			}),
 		}).catch(() => {})
-	}, [seatCount, _screenId, seatItemSize, windowWidth, rowGap, colGap])
+	}, [
+		seatCount,
+		_screenId,
+		seatItemSize,
+		windowWidth,
+		rowGap,
+		colGap,
+		rowsConfig,
+	])
 	// #endregion
 
 	const seatItemProps = (
@@ -157,7 +182,16 @@ export function SeatGrid({
 
 	if (rowsConfig) {
 		return (
-			<View style={[styles.container, { gap: rowGap }]}>
+			<View
+				style={[
+					styles.container,
+					{
+						gap: rowGap,
+
+						marginTop: seatCount === 20 ? -24 : 0,
+					},
+				]}
+			>
 				{rowsConfig.map((rowSize, rowIndex) => {
 					const start = rowsConfig.slice(0, rowIndex).reduce((a, b) => a + b, 0)
 					return (
@@ -183,7 +217,15 @@ export function SeatGrid({
 	}
 
 	return (
-		<View style={[styles.container, { gap: rowGap }]}>
+		<View
+			style={[
+				styles.container,
+				{
+					gap: rowGap,
+					marginTop: seatCount === 20 ? -24 : 0,
+				},
+			]}
+		>
 			<View style={[styles.row, { gap: colGap }]}>
 				{seatNumbers.map(n => (
 					<SeatItem
@@ -206,7 +248,6 @@ export function SeatGrid({
 
 const styles = StyleSheet.create({
 	container: {
-		flex: 1,
 		width: '100%',
 		alignItems: 'center',
 		justifyContent: 'center',

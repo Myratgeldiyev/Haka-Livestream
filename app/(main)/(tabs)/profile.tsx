@@ -28,7 +28,7 @@ export default function ProfileScreen() {
 
 	const handleLogout = async () => {
 		await logout()
-		router.replace('/(auth)/login-phone')
+		router.replace('/(auth)/sign-up')
 	}
 	if (isLoading) {
 		return (

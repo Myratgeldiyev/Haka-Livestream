@@ -1,3 +1,4 @@
+import type { RandomPkResponse } from '@/api/live-chat/room.types'
 import { ChatActionOverlay } from '@/components/chat-actions'
 import {
 	AnnouncementBox,
@@ -21,23 +22,25 @@ import {
 	enableAudioVolumeIndication,
 	setVolumeIndicationCallback,
 } from '@/services/agora/agora.service'
-import type { RandomPkResponse } from '@/api/live-chat/room.types'
 import { useAuthStore } from '@/store/auth.store'
 import { useLiveChatStore } from '@/store/liveChat.store'
-import { resolveImageUrl } from '@/utils/imageUrl'
 import type { ChatUser } from '@/types/chat-actions/chat-action.types'
 import { TopRightControls, TopUserInfo } from '@/types/game-ranking-types'
+import { resolveImageUrl } from '@/utils/imageUrl'
 import { useFocusEffect } from '@react-navigation/native'
 import { router, useLocalSearchParams, useNavigation } from 'expo-router'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
 	Alert,
+	Animated,
 	BackHandler,
 	ImageBackground,
+	Keyboard,
 	KeyboardAvoidingView,
-	Platform,
+	Pressable,
 	StyleSheet,
 	Text,
+	TextInput,
 	View,
 	useWindowDimensions,
 } from 'react-native'
@@ -70,7 +73,9 @@ function buildEmptySeats(count: number): SeatsState {
 }
 
 const SEAT_EMOJI_MSG_REGEX = /^\[seat_emoji:(\d+):([^\]]+)\]$/
-function parseSeatEmojiMessage(text: string): { seatNumber: number; emojiId: string } | null {
+function parseSeatEmojiMessage(
+	text: string,
+): { seatNumber: number; emojiId: string } | null {
 	const m = text.trim().match(SEAT_EMOJI_MSG_REGEX)
 	if (!m) return null
 	return { seatNumber: Number(m[1]), emojiId: m[2] }
@@ -109,6 +114,10 @@ export default function ChatRoomScreen() {
 		seatNumber: number
 		emojiId: string
 	} | null>(null)
+	const [composerVisible, setComposerVisible] = useState(false)
+	const [composerText, setComposerText] = useState('')
+	const composerAnim = React.useRef(new Animated.Value(0)).current
+	const [keyboardHeight, setKeyboardHeight] = useState(0)
 
 	const roomId = Array.isArray(rawRoomId) ? rawRoomId[0] : rawRoomId
 	const navigation = useNavigation()
@@ -116,7 +125,6 @@ export default function ChatRoomScreen() {
 	const activeRoom = useLiveChatStore(s => s.activeRoom)
 	const roomSeatCount = useLiveChatStore(s => s.roomSeatCount)
 	const users = useLiveChatStore(s => s.users)
-	const storeUid = useLiveChatStore(s => s.uid)
 	const isJoined = useLiveChatStore(s => s.isJoined)
 	const [speakingUids, setSpeakingUids] = useState<number[]>([])
 	const messages = useLiveChatStore(s => s.messages)
@@ -150,6 +158,7 @@ export default function ChatRoomScreen() {
 
 	const myCurrentSeatNumberRef = useRef<number | null>(null)
 	const processedSeatEmojiMessageIdsRef = useRef<Set<string>>(new Set())
+	const initialMessageIdsRef = useRef<Set<string> | null>(null)
 	const lastSeatChangeAtRef = useRef<number>(0)
 
 	const authenticatedUser = useAuthStore(state => state.user)
@@ -174,12 +183,16 @@ export default function ChatRoomScreen() {
 	const myUserId =
 		currentUserForSeat?.id ?? authenticatedUser?.user_id?.toString()
 
+	const chatRole = useLiveChatStore(s => s.role)
+
 	const currentUserRole: RoomPlayUserRole =
 		myUserId != null &&
 		activeRoom?.owner?.user_id != null &&
 		String(activeRoom.owner.user_id) === myUserId
 			? 'owner'
-			: 'listener'
+			: chatRole === 'admin'
+				? 'admin'
+				: 'listener'
 
 	const seatsWithMuteStatus: SeatsState = Object.entries(seats).reduce(
 		(acc, [key, seat]) => {
@@ -223,7 +236,6 @@ export default function ChatRoomScreen() {
 		() => users.filter(u => u.user.is_online === true).length,
 		[users],
 	)
-	const chatRole = useLiveChatStore(s => s.role)
 
 	const handleToggleFollowRoom = useCallback(async () => {
 		if (!roomId) return
@@ -268,7 +280,8 @@ export default function ChatRoomScreen() {
 		const loadRoomData = async () => {
 			try {
 				const currentRoomId = useLiveChatStore.getState().roomId
-				if (currentRoomId === roomId) {
+				const joinedSameRoom = currentRoomId === roomId
+				if (joinedSameRoom) {
 					await Promise.all([
 						fetchRoomDetail(roomId),
 						fetchMessages(roomId),
@@ -300,6 +313,7 @@ export default function ChatRoomScreen() {
 
 		return () => {
 			clearMessages()
+			initialMessageIdsRef.current = null
 		}
 	}, [
 		roomId,
@@ -346,14 +360,12 @@ export default function ChatRoomScreen() {
 	useEffect(() => {
 		const VOLUME_THRESHOLD = 50
 		const cb = (speakers: { uid: number; volume: number }[]) => {
-			const storeUid = useLiveChatStore.getState().uid
 			const uids = speakers
 				.filter(s => s.volume > VOLUME_THRESHOLD)
-				.map(s => (s.uid === 0 && storeUid != null ? storeUid : s.uid))
+				.map(s => s.uid)
 			if (__DEV__ && speakers.length > 0) {
 				console.log('[CHAT_ROOM] onAudioVolumeIndication', {
 					speakers: speakers.map(s => ({ uid: s.uid, volume: s.volume })),
-					storeUid,
 					speakingUids: Array.from(new Set(uids)),
 				})
 			}
@@ -444,19 +456,35 @@ export default function ChatRoomScreen() {
 		const mySpeaker = roomSpeakers.find(
 			f => myUserId != null && String(f.user.user_id) === myUserId,
 		)
+		const now = Date.now()
+		const justChangedSeatRecently = now - lastSeatChangeAtRef.current < 6000
+
 		if (mySpeaker?.seat_number != null) {
 			myCurrentSeatNumberRef.current = mySpeaker.seat_number
 		} else if (mySpeaker && mySpeaker.seat_number === null) {
 			myCurrentSeatNumberRef.current = null
 		}
+
 		setSeats(prev => {
 			const next: SeatsState = { ...prev }
+
 			for (let n = 1; n <= roomSeatCount; n++) {
 				const existing = next[n]
 				const speaker = roomSpeakers.find(
 					s => s.seat_number != null && s.seat_number === n,
 				)
-				if (speaker) {
+
+				const isMySpeaker =
+					speaker != null &&
+					myUserId != null &&
+					String(speaker.user.user_id) === myUserId
+				const shouldIgnoreMyOutdatedServerSeat =
+					isMySpeaker &&
+					justChangedSeatRecently &&
+					mySeat != null &&
+					speaker.seat_number !== mySeat
+
+				if (speaker && !shouldIgnoreMyOutdatedServerSeat) {
 					const avatarUrl = resolveImageUrl(speaker.user.profile_picture) || ''
 					next[n] = {
 						status: existing?.status ?? 'unlocked',
@@ -469,18 +497,18 @@ export default function ChatRoomScreen() {
 					}
 				} else {
 					const isMySeat =
-						myUserId != null && (existing?.user?.id === myUserId || mySeat === n)
-					const justChangedSeat = Date.now() - lastSeatChangeAtRef.current < 6000
+						myUserId != null &&
+						(existing?.user?.id === myUserId || mySeat === n)
+					const justChangedSeat =
+						Date.now() - lastSeatChangeAtRef.current < 6000
 					const serverSaysWeOnThisSeat = mySpeaker?.seat_number === n
 					const serverSaysWeLeft =
 						mySpeaker != null && mySpeaker.seat_number === null
 					const preserve =
 						isMySeat &&
 						// Keep our local seat as long as server has NOT explicitly said we left.
-						(!serverSaysWeLeft &&
-							(justChangedSeat ||
-								serverSaysWeOnThisSeat ||
-								mySpeaker == null))
+						!serverSaysWeLeft &&
+						(justChangedSeat || serverSaysWeOnThisSeat || mySpeaker == null)
 					if (preserve) {
 						next[n] = existing ?? { status: 'unlocked', user: null }
 					} else {
@@ -492,6 +520,40 @@ export default function ChatRoomScreen() {
 					}
 				}
 			}
+
+			// Ensure the current user never appears in multiple seats at once.
+			if (myUserId != null) {
+				let keepSeatNumber: number | null = null
+
+				for (let n = 1; n <= roomSeatCount; n++) {
+					const seatUserId = next[n].user?.id
+					if (seatUserId === myUserId) {
+						if (keepSeatNumber == null) {
+							keepSeatNumber = mySeat != null && mySeat === n ? mySeat : n
+						} else if (
+							mySeat != null &&
+							keepSeatNumber !== mySeat &&
+							n === mySeat
+						) {
+							// Prefer the seat that matches our local current seat ref.
+							keepSeatNumber = mySeat
+						}
+					}
+				}
+
+				if (keepSeatNumber != null) {
+					for (let n = 1; n <= roomSeatCount; n++) {
+						if (n === keepSeatNumber) continue
+						if (next[n].user?.id === myUserId) {
+							next[n] = {
+								...next[n],
+								user: null,
+							}
+						}
+					}
+				}
+			}
+
 			return next
 		})
 	}, [roomSpeakers, roomSeatCount, myUserId])
@@ -524,8 +586,7 @@ export default function ChatRoomScreen() {
 		if (seatNo != null) {
 			try {
 				await leaveSeatChatRoom(String(seatNo))
-			} catch {
-			}
+			} catch {}
 			myCurrentSeatNumberRef.current = null
 		}
 		if (myUserId) {
@@ -808,16 +869,19 @@ export default function ChatRoomScreen() {
 		if (justChangedSeat) return
 		if (!storeIsMuted) {
 			// #region agent log
-			fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					location: 'chat/[roomId]:autoMuteEffect:callingMuteMyself',
-					message: 'effect calling muteMyself',
-					data: { roomId, hypothesisId: 'H3' },
-					timestamp: Date.now(),
-				}),
-			}).catch(() => {})
+			fetch(
+				'http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a',
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						location: 'chat/[roomId]:autoMuteEffect:callingMuteMyself',
+						message: 'effect calling muteMyself',
+						data: { roomId, hypothesisId: 'H3' },
+						timestamp: Date.now(),
+					}),
+				},
+			).catch(() => {})
 			// #endregion
 			muteMyself(roomId).catch(() => {})
 		}
@@ -841,8 +905,7 @@ export default function ChatRoomScreen() {
 	}, [myUserId, seatsWithMuteStatus])
 
 	const isMuted = isUserOnSeat ? mySeatMuted || storeIsMuted : storeIsMuted
-	const canModerateActions =
-		chatRole === 'owner' || chatRole === 'admin'
+	const canModerateActions = chatRole === 'owner' || chatRole === 'admin'
 
 	const handleToggleMute = useCallback(() => {
 		if (!roomId) return
@@ -857,14 +920,26 @@ export default function ChatRoomScreen() {
 		})
 	}, [roomId, isUserOnSeat, isMuted, muteMyself, unmuteMyself])
 
+	// Mark initial message set once we have messages (so we don't show emoji for old/history messages)
+	useEffect(() => {
+		if (messages.length === 0 || initialMessageIdsRef.current != null) return
+		initialMessageIdsRef.current = new Set(messages.map(m => m.id))
+	}, [messages])
+
 	useEffect(() => {
 		const processed = processedSeatEmojiMessageIdsRef.current
+		const initialIds = initialMessageIdsRef.current
 		for (const msg of messages) {
 			if (processed.has(msg.id) || msg.isMe) continue
 			const parsed = parseSeatEmojiMessage(msg.text)
 			if (!parsed) continue
 			processed.add(msg.id)
-			setSeatEmojiBurst({ seatNumber: parsed.seatNumber, emojiId: parsed.emojiId })
+			// Only show emoji for messages that arrived after join (not initial load)
+			if (initialIds?.has(msg.id)) continue
+			setSeatEmojiBurst({
+				seatNumber: parsed.seatNumber,
+				emojiId: parsed.emojiId,
+			})
 			setTimeout(() => setSeatEmojiBurst(null), 2500)
 		}
 	}, [messages])
@@ -890,11 +965,73 @@ export default function ChatRoomScreen() {
 		[messages],
 	)
 
+	const openComposer = useCallback(() => {
+		if (composerVisible) return
+		setComposerVisible(true)
+		composerAnim.setValue(0)
+		Animated.timing(composerAnim, {
+			toValue: 1,
+			duration: 220,
+			useNativeDriver: true,
+		}).start()
+	}, [composerVisible, composerAnim])
+
+	const hideComposer = useCallback(() => {
+		if (!composerVisible) return
+		Animated.timing(composerAnim, {
+			toValue: 0,
+			duration: 220,
+			useNativeDriver: true,
+		}).start(({ finished }) => {
+			if (finished) {
+				setComposerVisible(false)
+				setComposerText('')
+			}
+		})
+	}, [composerVisible, composerAnim])
+
+	useEffect(() => {
+		const showSub = Keyboard.addListener('keyboardDidShow', e => {
+			setKeyboardHeight(e.endCoordinates?.height ?? 0)
+		})
+		const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+			setKeyboardHeight(0)
+			hideComposer()
+		})
+		return () => {
+			showSub.remove()
+			hideSub.remove()
+		}
+	}, [hideComposer])
+
+	const seatSectionPaddingTop = Math.max(40, screenHeight * 0.08) + 10
 	const seatSectionPaddingBottom = Math.min(
 		320,
 		Math.max(200, screenHeight * 0.36),
 	)
 	const chatSectionMaxHeight = Math.min(180, Math.max(90, screenHeight * 0.2))
+	const adjustedChatSectionMaxHeight =
+		roomSeatCount === 20
+			? Math.max(60, chatSectionMaxHeight - 20)
+			: chatSectionMaxHeight
+
+	fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			location: 'chat/[roomId].tsx:layoutMetrics',
+			message: 'Seat/chat layout metrics',
+			data: {
+				screenHeight,
+				seatSectionPaddingBottom,
+				chatSectionMaxHeight,
+				roomSeatCount,
+			},
+			timestamp: Date.now(),
+			hypothesisId: 'H3',
+		}),
+	}).catch(() => {})
+	// #endregion
 
 	return (
 		<View style={styles.container}>
@@ -903,11 +1040,7 @@ export default function ChatRoomScreen() {
 				style={styles.background}
 				resizeMode='cover'
 			>
-				<KeyboardAvoidingView
-					behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-					style={styles.keyboardAvoid}
-					keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-				>
+				<KeyboardAvoidingView style={styles.keyboardAvoid}>
 					<SafeAreaView style={styles.safeAreaTop} edges={['top']}>
 						<View style={styles.topBar}>
 							<TopUserInfo
@@ -929,7 +1062,10 @@ export default function ChatRoomScreen() {
 					<View
 						style={[
 							styles.seatSection,
-							{ paddingBottom: seatSectionPaddingBottom },
+							{
+								paddingTop: seatSectionPaddingTop,
+								paddingBottom: seatSectionPaddingBottom,
+							},
 						]}
 					>
 						<SeatGrid
@@ -961,7 +1097,10 @@ export default function ChatRoomScreen() {
 						</View>
 
 						<View
-							style={[styles.chatSection, { maxHeight: chatSectionMaxHeight }]}
+							style={[
+								styles.chatSection,
+								{ maxHeight: adjustedChatSectionMaxHeight },
+							]}
 						>
 							<Text style={styles.publicMsgStatus}>
 								{publicMsgEnabled
@@ -992,15 +1131,79 @@ export default function ChatRoomScreen() {
 								onToggleMute={handleToggleMute}
 								onTakeFirstAvailableSeat={handleTakeFirstAvailableSeat}
 								onEmojiPicked={handleEmojiPicked}
+								onOpenComposer={openComposer}
 							/>
 						</SafeAreaView>
 					</View>
 				</KeyboardAvoidingView>
 
+				{composerVisible && (
+					<View style={StyleSheet.absoluteFill}>
+						<Pressable
+							style={StyleSheet.absoluteFill}
+							onPress={() => Keyboard.dismiss()}
+						/>
+						<View
+							style={[
+								styles.composerOverlayContainer,
+								{ bottom: (keyboardHeight || 0) + 50 },
+							]}
+						>
+							<Animated.View
+								style={[
+									styles.composerBar,
+									{
+										opacity: composerAnim,
+										transform: [
+											{
+												translateY: composerAnim.interpolate({
+													inputRange: [0, 1],
+													outputRange: [40, 0],
+												}),
+											},
+										],
+									},
+								]}
+							>
+								<View style={styles.composerEmoji} />
+								<TextInput
+									style={styles.composerInput}
+									value={composerText}
+									onChangeText={setComposerText}
+									placeholder='Type something...'
+									placeholderTextColor='rgba(0,0,0,0.4)'
+									autoFocus
+									returnKeyType='send'
+									onSubmitEditing={() => {
+										const trimmed = composerText.trim()
+										if (!trimmed) return
+										handleSendMessage(trimmed)
+										setComposerText('')
+										Keyboard.dismiss()
+									}}
+								/>
+								<Pressable
+									style={styles.composerSend}
+									onPress={() => {
+										const trimmed = composerText.trim()
+										if (!trimmed) return
+										handleSendMessage(trimmed)
+										setComposerText('')
+										Keyboard.dismiss()
+									}}
+								>
+									<Text style={styles.composerSendText}>➤</Text>
+								</Pressable>
+							</Animated.View>
+						</View>
+					</View>
+				)}
+
 				<ChatActionOverlay
 					visible={selectedSeatUser !== null}
 					onClose={() => setSelectedSeatUser(null)}
 					user={selectedSeatUser}
+					canModerateActions={canModerateActions}
 				/>
 
 				<InviteMicSheet
@@ -1058,7 +1261,7 @@ export default function ChatRoomScreen() {
 				<DraggableKeepExitOverlay
 					visible={leaveConfirmVisible}
 					onKeep={handleLeaveConfirmKeep}
-					onExit={() => setLeaveConfirmVisible(false)}
+					onExit={handleClose}
 				/>
 
 				<DraggableCalculatorCountdown
@@ -1103,9 +1306,9 @@ const styles = StyleSheet.create({
 	},
 	bottomSection: {
 		position: 'absolute',
-		bottom: 0,
 		left: 0,
 		right: 0,
+		bottom: 0,
 		paddingTop: 12,
 	},
 	announcementWrapper: {
@@ -1126,5 +1329,54 @@ const styles = StyleSheet.create({
 		fontWeight: fontWeights.medium,
 		color: 'rgba(255, 255, 255, 0.75)',
 		marginBottom: 6,
+	},
+	composerOverlayContainer: {
+		position: 'absolute',
+		left: 0,
+		right: 0,
+		alignItems: 'center',
+	},
+	composerBar: {
+		marginHorizontal: 8,
+		marginBottom: 4,
+		borderRadius: 20,
+		backgroundColor: '#FFFFFF',
+		flexDirection: 'row',
+		alignItems: 'center',
+		paddingHorizontal: 8,
+		paddingVertical: 6,
+		shadowColor: 'rgba(0,0,0,0.15)',
+		shadowOpacity: 0.4,
+		shadowRadius: 6,
+		shadowOffset: { width: 0, height: -1 },
+		elevation: 4,
+	},
+	composerEmoji: {
+		width: 24,
+		height: 24,
+		borderRadius: 12,
+		marginRight: 6,
+	},
+	composerInput: {
+		flex: 1,
+		fontSize: fontSizes.md,
+		color: '#111111',
+		paddingVertical: 0,
+		paddingLeft: 0,
+		paddingRight: 8,
+	},
+	composerSend: {
+		width: 32,
+		height: 32,
+		borderRadius: 16,
+		backgroundColor: '#00D25B',
+		justifyContent: 'center',
+		alignItems: 'center',
+		marginLeft: 6,
+	},
+	composerSendText: {
+		color: '#FFFFFF',
+		fontSize: fontSizes.md,
+		fontWeight: '600',
 	},
 })

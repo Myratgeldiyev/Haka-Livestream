@@ -101,11 +101,7 @@ export function SeatItem({
 			console.log('[SeatItem] isSpeaking changed', { seatNumber, isSpeaking })
 		}
 		if (isSpeaking) {
-			glowOpacity.value = withRepeat(
-				withTiming(1, { duration: 600 }),
-				0,
-				true,
-			)
+			glowOpacity.value = withRepeat(withTiming(1, { duration: 600 }), 0, true)
 			waveProgress.value = withRepeat(
 				withTiming(1, { duration: 900 }),
 				0,
@@ -258,7 +254,6 @@ export function SeatItem({
 									styles.iconSlot,
 									{ width: iconSize, height: iconSize },
 									(isMuted || showEmojiId) && styles.iconSlotRelative,
-									showEmojiId && styles.iconSlotOverflowHidden,
 								]}
 							>
 								<Image
@@ -275,26 +270,36 @@ export function SeatItem({
 										<MicMutedIcon width={20} height={20} />
 									</View>
 								)}
-								{showEmojiId &&
-									(() => {
-										const emojiSource = getEmojiDisplaySource(showEmojiId)
-										if (emojiSource == null) return null
-										return (
+							</View>
+							{showEmojiId &&
+								(() => {
+									const emojiSource = getEmojiDisplaySource(showEmojiId)
+									if (emojiSource == null) return null
+									const emojiSize = iconSize + 20
+									return (
+										<View
+											style={[
+												styles.seatEmojiOverlay,
+												{
+													width: emojiSize,
+													height: emojiSize,
+													left: (iconSize - emojiSize) / 2,
+													top: (iconSize - emojiSize) / 2,
+												},
+											]}
+											pointerEvents='none'
+										>
 											<ExpoImage
 												source={emojiSource as any}
 												style={[
 													styles.seatEmojiBubble,
-													{
-														width: iconSize + 15,
-														height: iconSize + 15,
-														borderRadius: iconSize / 2,
-													},
+													{ width: emojiSize, height: emojiSize },
 												]}
-												contentFit='cover'
+												contentFit='contain'
 											/>
-										)
-									})()}
-							</View>
+										</View>
+									)
+								})()}
 						</View>
 						<Text style={styles.username} numberOfLines={1}>
 							{seat?.user?.username}
@@ -484,13 +489,15 @@ const styles = StyleSheet.create({
 	avatarHidden: {
 		opacity: 0,
 	},
-	iconSlotOverflowHidden: {
-		overflow: 'hidden',
-		borderRadius: 999,
+	seatEmojiOverlay: {
+		position: 'absolute',
+		alignItems: 'center',
+		justifyContent: 'center',
+		zIndex: 2,
 	},
 	seatEmojiBubble: {
-		position: 'absolute',
-		zIndex: 1,
+		width: '100%',
+		height: '100%',
 	},
 	seatEmojiBubbleFill: {
 		...StyleSheet.absoluteFillObject,

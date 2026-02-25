@@ -1,5 +1,5 @@
 import { LIVE_STREAM, LiveStreamTab } from '@/constants/liveStream'
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
 	Animated,
 	LayoutChangeEvent,
@@ -15,11 +15,13 @@ interface TabMeasurement {
 }
 
 interface LiveChatTabsProps {
+	/** When provided, tab selection is controlled by the parent (e.g. so "Live" stays active when returning from chat screen). */
+	activeTab?: LiveStreamTab
 	onTabChange?: (tab: LiveStreamTab) => void
 }
 
-export function LiveChatTabs({ onTabChange }: LiveChatTabsProps) {
-	const [activeTab, setActiveTab] = useState<LiveStreamTab>('Live')
+export function LiveChatTabs({ activeTab: controlledActiveTab, onTabChange }: LiveChatTabsProps) {
+	const [internalActiveTab, setInternalActiveTab] = useState<LiveStreamTab>('Live')
 	const [isReady, setIsReady] = useState(false)
 	const measurements = useRef<Record<LiveStreamTab, TabMeasurement>>(
 		{} as Record<LiveStreamTab, TabMeasurement>,
@@ -28,6 +30,9 @@ export function LiveChatTabs({ onTabChange }: LiveChatTabsProps) {
 	const scaleX = useRef(new Animated.Value(0)).current
 	const indicatorLeft = useRef(new Animated.Value(0)).current
 	const indicatorWidth = useRef(0)
+
+	const isControlled = controlledActiveTab !== undefined
+	const activeTab = isControlled ? controlledActiveTab : internalActiveTab
 
 	const onTabLayout = (tab: LiveStreamTab) => (e: LayoutChangeEvent) => {
 		const { x, width } = e.nativeEvent.layout
@@ -63,10 +68,19 @@ export function LiveChatTabs({ onTabChange }: LiveChatTabsProps) {
 		}).start()
 	}
 
+	// When controlled activeTab changes (e.g. parent resets to 'Live' on focus), sync indicator
+	useEffect(() => {
+		if (!isControlled || !isReady) return
+		const m = measurements[controlledActiveTab!]
+		if (m) animateIndicator(controlledActiveTab!)
+	}, [isControlled, controlledActiveTab, isReady])
+
 	const handleTabPress = (tab: LiveStreamTab) => {
 		if (tab === activeTab) return
-		setActiveTab(tab)
-		animateIndicator(tab)
+		if (!isControlled) {
+			setInternalActiveTab(tab)
+			animateIndicator(tab)
+		}
 		onTabChange?.(tab)
 	}
 

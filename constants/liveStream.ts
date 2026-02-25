@@ -10,6 +10,8 @@ export const LIVE_STREAM = {
 		rightControlsTop: 361,
 		rightControlsRight: 16,
 		bottomButtonMargin: 40,
+		/** Bottom offset for Live/Chat tab bar (same on live-start and chat-start). */
+		bottomTabsOffset: 40,
 	},
 	sizes: {
 		topInfoImage: {
