@@ -21,6 +21,7 @@ import {
 	enableAudioVolumeIndication,
 	setVolumeIndicationCallback,
 } from '@/services/agora/agora.service'
+import type { RandomPkResponse } from '@/api/live-chat/room.types'
 import { useAuthStore } from '@/store/auth.store'
 import { useLiveChatStore } from '@/store/liveChat.store'
 import { resolveImageUrl } from '@/utils/imageUrl'
@@ -68,7 +69,6 @@ function buildEmptySeats(count: number): SeatsState {
 	)
 }
 
-/** Format: [seat_emoji:seatNumber:emojiId] - sent so other users show this emoji on that seat */
 const SEAT_EMOJI_MSG_REGEX = /^\[seat_emoji:(\d+):([^\]]+)\]$/
 function parseSeatEmojiMessage(text: string): { seatNumber: number; emojiId: string } | null {
 	const m = text.trim().match(SEAT_EMOJI_MSG_REGEX)
@@ -91,6 +91,7 @@ export default function ChatRoomScreen() {
 	const [musicOverlayFromPlayerVisible, setMusicOverlayFromPlayerVisible] =
 		useState(false)
 	const [pkMatchOverlayVisible, setPkMatchOverlayVisible] = useState(false)
+	const [pkMatchData, setPkMatchData] = useState<RandomPkResponse | null>(null)
 	const [leaveConfirmVisible, setLeaveConfirmVisible] = useState(false)
 	const [calculatorCountdown, setCalculatorCountdown] = useState<{
 		durationMinutes: number | null
@@ -142,18 +143,17 @@ export default function ChatRoomScreen() {
 	const storeIsMuted = useLiveChatStore(s => s.isMuted)
 	const followRoom = useLiveChatStore(s => s.followRoom)
 	const unfollowRoom = useLiveChatStore(s => s.unfollowRoom)
+	const startRandomPkBattle = useLiveChatStore(s => s.startRandomPkBattle)
 	const requestSpeakerRole = useLiveChatStore(s => s.requestSpeakerRole)
 	const changeSeatChatRoom = useLiveChatStore(s => s.changeSeatChatRoom)
 	const leaveSeatChatRoom = useLiveChatStore(s => s.leaveSeatChatRoom)
 
 	const myCurrentSeatNumberRef = useRef<number | null>(null)
 	const processedSeatEmojiMessageIdsRef = useRef<Set<string>>(new Set())
-	/** After we change seat, ignore server roomSpeakers for our seat briefly so stale poll doesn't revert us. */
 	const lastSeatChangeAtRef = useRef<number>(0)
 
 	const authenticatedUser = useAuthStore(state => state.user)
 	const { data: myProfile } = useMyProfile()
-	// Use auth user or fallback to profile so "Take a seat" works when auth store hasn't hydrated yet
 	const currentUserForSeat = useMemo(() => {
 		if (authenticatedUser) {
 			return {
@@ -181,6 +181,37 @@ export default function ChatRoomScreen() {
 			? 'owner'
 			: 'listener'
 
+	const seatsWithMuteStatus: SeatsState = Object.entries(seats).reduce(
+		(acc, [key, seat]) => {
+			const seatNumber = Number(key)
+			if (seat.user) {
+				const roomUser = users.find(
+					u => u.user.user_id.toString() === seat.user?.id,
+				)
+				const fromList = roomUser?.is_muted ?? false
+				const isCurrentUserSeat = seat.user.id === myUserId
+				acc[seatNumber] = {
+					...seat,
+					user: {
+						...seat.user,
+						isMuted: fromList || (isCurrentUserSeat && storeIsMuted),
+					},
+				}
+			} else {
+				acc[seatNumber] = seat
+			}
+			return acc
+		},
+		{} as SeatsState,
+	)
+
+	const isUserOnSeat = useMemo(
+		() =>
+			!!myUserId &&
+			Object.values(seatsWithMuteStatus).some(s => s.user?.id === myUserId),
+		[myUserId, seatsWithMuteStatus],
+	)
+
 	const isFollowing = useMemo(
 		() =>
 			myUserId != null &&
@@ -192,6 +223,7 @@ export default function ChatRoomScreen() {
 		() => users.filter(u => u.user.is_online === true).length,
 		[users],
 	)
+	const chatRole = useLiveChatStore(s => s.role)
 
 	const handleToggleFollowRoom = useCallback(async () => {
 		if (!roomId) return
@@ -212,6 +244,20 @@ export default function ChatRoomScreen() {
 			)
 		}
 	}, [roomId, isFollowing, followRoom, unfollowRoom, fetchRoomFollowers])
+
+	const handleRandomPkMatch = useCallback(async () => {
+		if (!roomId) return
+		try {
+			const res = await startRandomPkBattle(roomId)
+			setPkMatchData(res)
+			setPkMatchOverlayVisible(true)
+		} catch (e: any) {
+			Alert.alert(
+				'PK Match',
+				e?.message ?? 'Failed to start random PK match. Please try again.',
+			)
+		}
+	}, [roomId, startRandomPkBattle])
 
 	useEffect(() => {
 		if (!roomId) {
@@ -275,7 +321,6 @@ export default function ChatRoomScreen() {
 		}, [roomId, clearMinimized]),
 	)
 
-	// Poll all room data every 4s (no websocket): seats/online users, messages, room detail, users (mute state)
 	useEffect(() => {
 		if (!roomId || !isJoined) return
 		const poll = () => {
@@ -298,12 +343,10 @@ export default function ChatRoomScreen() {
 		fetchAllUsersInChatRoom,
 	])
 
-	// Agora volume indication: speakingUids = uids with volume > 50; map uid 0 to local user's store uid
 	useEffect(() => {
 		const VOLUME_THRESHOLD = 50
 		const cb = (speakers: { uid: number; volume: number }[]) => {
 			const storeUid = useLiveChatStore.getState().uid
-			// Agora reports local user as uid 0 or actual uid; map 0 -> storeUid so getIsSpeakingForSeat sees us
 			const uids = speakers
 				.filter(s => s.volume > VOLUME_THRESHOLD)
 				.map(s => (s.uid === 0 && storeUid != null ? storeUid : s.uid))
@@ -329,11 +372,9 @@ export default function ChatRoomScreen() {
 		if (!isJoined || !roomId) return
 		const appId = process.env.EXPO_PUBLIC_AGORA_APP_ID
 		if (!appId) return
-		// 200ms interval, smooth 3, reportVad true; call after join
 		enableAudioVolumeIndication(appId, 200, 3, true).catch(() => {})
 	}, [isJoined, roomId])
 
-	// Re-enable volume indication when user takes a seat (broadcaster) so local speaking is reported
 	useEffect(() => {
 		if (!isUserOnSeat || !isJoined || !roomId) return
 		const appId = process.env.EXPO_PUBLIC_AGORA_APP_ID
@@ -344,14 +385,16 @@ export default function ChatRoomScreen() {
 	const getIsSpeakingForSeat = useCallback(
 		(seatNumber: number, seat: Seat | undefined): boolean => {
 			if (!seat?.user) return false
-			// Current user: we know our Agora uid from store
-			if (seat.user.id === myUserId && storeUid != null) {
-				return speakingUids.includes(storeUid)
-			}
-			// Remote users: would need seat -> Agora uid map (e.g. from backend room_users with uid)
-			return false
+
+			// Do not show speaking glow when the seat user is muted or camera/mic is turned off.
+			if (seat.user.isMuted || seat.isTurnedOff) return false
+
+			const userUid = Number(seat.user.id)
+			if (!Number.isFinite(userUid)) return false
+
+			return speakingUids.includes(userUid)
 		},
-		[myUserId, storeUid, speakingUids],
+		[speakingUids],
 	)
 
 	useEffect(() => {
@@ -395,19 +438,15 @@ export default function ChatRoomScreen() {
 		})
 	}, [roomSeatCount])
 
-	// Sync seat occupancy from server (room_speakers) so all users see who is on which seat.
-	// Preserve current user's seat if server hasn't returned it yet (avoid flicker + 400 on retry).
 	useEffect(() => {
 		if (roomSeatCount <= 0) return
 		const mySeat = myCurrentSeatNumberRef.current
-		// Keep ref in sync when server says we're on a seat; don't clear ref when server is stale (we may have just taken seat)
 		const mySpeaker = roomSpeakers.find(
 			f => myUserId != null && String(f.user.user_id) === myUserId,
 		)
 		if (mySpeaker?.seat_number != null) {
 			myCurrentSeatNumberRef.current = mySpeaker.seat_number
 		} else if (mySpeaker && mySpeaker.seat_number === null) {
-			// Server explicitly says we're in room but not on a seat (we left or never took one)
 			myCurrentSeatNumberRef.current = null
 		}
 		setSeats(prev => {
@@ -418,7 +457,6 @@ export default function ChatRoomScreen() {
 					s => s.seat_number != null && s.seat_number === n,
 				)
 				if (speaker) {
-					// Resolve profile_picture to full URL so avatar image loads (API often returns path like /media/...)
 					const avatarUrl = resolveImageUrl(speaker.user.profile_picture) || ''
 					next[n] = {
 						status: existing?.status ?? 'unlocked',
@@ -430,18 +468,19 @@ export default function ChatRoomScreen() {
 						isTurnedOff: existing?.isTurnedOff,
 					}
 				} else {
-					// Don't clear my own seat if server hasn't caught up yet (stale room_speakers) or we just changed seat.
-					// Window 6s so it outlasts the 4s poll; also preserve when we're not in server list yet (mySpeaker == null).
 					const isMySeat =
 						myUserId != null && (existing?.user?.id === myUserId || mySeat === n)
 					const justChangedSeat = Date.now() - lastSeatChangeAtRef.current < 6000
 					const serverSaysWeOnThisSeat = mySpeaker?.seat_number === n
-					const serverSaysWeLeft = mySpeaker != null && mySpeaker.seat_number === null
-					// When justChangedSeat, always preserve (server often still has us as seat_number null). Otherwise preserve only if server agrees or we're not in list.
+					const serverSaysWeLeft =
+						mySpeaker != null && mySpeaker.seat_number === null
 					const preserve =
 						isMySeat &&
-						(justChangedSeat ||
-							((serverSaysWeOnThisSeat || mySpeaker == null) && !serverSaysWeLeft))
+						// Keep our local seat as long as server has NOT explicitly said we left.
+						(!serverSaysWeLeft &&
+							(justChangedSeat ||
+								serverSaysWeOnThisSeat ||
+								mySpeaker == null))
 					if (preserve) {
 						next[n] = existing ?? { status: 'unlocked', user: null }
 					} else {
@@ -485,8 +524,7 @@ export default function ChatRoomScreen() {
 		if (seatNo != null) {
 			try {
 				await leaveSeatChatRoom(String(seatNo))
-			} catch (_) {
-				// continue to leave room even if leave seat fails
+			} catch {
 			}
 			myCurrentSeatNumberRef.current = null
 		}
@@ -727,30 +765,6 @@ export default function ChatRoomScreen() {
 			}))
 	}, [users, seats])
 
-	const seatsWithMuteStatus: SeatsState = Object.entries(seats).reduce(
-		(acc, [key, seat]) => {
-			const seatNumber = Number(key)
-			if (seat.user) {
-				const roomUser = users.find(
-					u => u.user.user_id.toString() === seat.user?.id,
-				)
-				const fromList = roomUser?.is_muted ?? false
-				const isCurrentUserSeat = seat.user.id === myUserId
-				acc[seatNumber] = {
-					...seat,
-					user: {
-						...seat.user,
-						isMuted: fromList || (isCurrentUserSeat && storeIsMuted),
-					},
-				}
-			} else {
-				acc[seatNumber] = seat
-			}
-			return acc
-		},
-		{} as SeatsState,
-	)
-
 	const handleSendMessage = async (text: string) => {
 		if (!roomId) return
 		try {
@@ -769,22 +783,46 @@ export default function ChatRoomScreen() {
 		setMusicPlayerVisible(true)
 	}
 
-	const isUserOnSeat = useMemo(
-		() =>
-			!!myUserId &&
-			Object.values(seatsWithMuteStatus).some(s => s.user?.id === myUserId),
-		[myUserId, seatsWithMuteStatus],
-	)
-
-	// Koltukta değilken mikrofonu kapat: sadece koltuk alan kullanıcı konuşabilsin
 	useEffect(() => {
+		// #region agent log
+		fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				location: 'chat/[roomId]:autoMuteEffect:run',
+				message: 'auto-mute effect ran',
+				data: {
+					isJoined,
+					roomId: roomId ?? null,
+					isUserOnSeat,
+					storeIsMuted,
+					justChangedSeat: Date.now() - lastSeatChangeAtRef.current < 4000,
+					hypothesisId: 'H3',
+				},
+				timestamp: Date.now(),
+			}),
+		}).catch(() => {})
+		// #endregion
 		if (!isJoined || !roomId || isUserOnSeat) return
+		const justChangedSeat = Date.now() - lastSeatChangeAtRef.current < 4000
+		if (justChangedSeat) return
 		if (!storeIsMuted) {
+			// #region agent log
+			fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					location: 'chat/[roomId]:autoMuteEffect:callingMuteMyself',
+					message: 'effect calling muteMyself',
+					data: { roomId, hypothesisId: 'H3' },
+					timestamp: Date.now(),
+				}),
+			}).catch(() => {})
+			// #endregion
 			muteMyself(roomId).catch(() => {})
 		}
 	}, [isJoined, roomId, isUserOnSeat, storeIsMuted, muteMyself])
 
-	// Re-enable volume indication when screen gains focus while on seat (e.g. after background / other app audio)
 	useFocusEffect(
 		useCallback(() => {
 			if (!isUserOnSeat || !isJoined || !roomId) return
@@ -803,6 +841,8 @@ export default function ChatRoomScreen() {
 	}, [myUserId, seatsWithMuteStatus])
 
 	const isMuted = isUserOnSeat ? mySeatMuted || storeIsMuted : storeIsMuted
+	const canModerateActions =
+		chatRole === 'owner' || chatRole === 'admin'
 
 	const handleToggleMute = useCallback(() => {
 		if (!roomId) return
@@ -817,7 +857,6 @@ export default function ChatRoomScreen() {
 		})
 	}, [roomId, isUserOnSeat, isMuted, muteMyself, unmuteMyself])
 
-	// When we receive a seat_emoji message (from another user), show that emoji on their seat
 	useEffect(() => {
 		const processed = processedSeatEmojiMessageIdsRef.current
 		for (const msg of messages) {
@@ -841,13 +880,11 @@ export default function ChatRoomScreen() {
 			const seatNumber = Number(entry[0])
 			setSeatEmojiBurst({ seatNumber, emojiId })
 			setTimeout(() => setSeatEmojiBurst(null), 2500)
-			// Send so other users see this emoji on our seat (they get it via message poll)
 			sendMessage(toSeatEmojiMessage(seatNumber, emojiId)).catch(() => {})
 		},
 		[myUserId, roomId, seatsWithMuteStatus, sendMessage],
 	)
 
-	// Chat list: hide seat_emoji system messages
 	const displayMessages = useMemo(
 		() => messages.filter(m => !parseSeatEmojiMessage(m.text)),
 		[messages],
@@ -932,7 +969,11 @@ export default function ChatRoomScreen() {
 									: 'Public message disabled'}
 							</Text>
 							{publicMsgEnabled ? (
-								<ChatList messages={displayMessages} statusText={chatStatusText} />
+								<ChatList
+									messages={displayMessages}
+									statusText={chatStatusText}
+									canModerateActions={canModerateActions}
+								/>
 							) : null}
 						</View>
 						<SafeAreaView edges={['bottom']}>
@@ -942,7 +983,7 @@ export default function ChatRoomScreen() {
 								publicMsgEnabled={publicMsgEnabled}
 								onTogglePublicMsg={handleTogglePublicMsg}
 								onOpenMusicPlayer={handleOpenMusicPlayer}
-								onRoomPKRandomMatch={() => setPkMatchOverlayVisible(true)}
+								onRoomPKRandomMatch={handleRandomPkMatch}
 								onCalculatorStart={minutes =>
 									setCalculatorCountdown({ durationMinutes: minutes })
 								}
@@ -993,6 +1034,24 @@ export default function ChatRoomScreen() {
 						visible
 						onClose={() => setPkMatchOverlayVisible(false)}
 						initialMode='expanded'
+						userA={
+							pkMatchData
+								? {
+										id: pkMatchData.room1_id,
+										name: pkMatchData.room1,
+										score: pkMatchData.room1_score,
+									}
+								: undefined
+						}
+						userB={
+							pkMatchData
+								? {
+										id: pkMatchData.room2_id,
+										name: pkMatchData.room2,
+										score: pkMatchData.room2_score,
+									}
+								: undefined
+						}
 					/>
 				)}
 
@@ -1022,7 +1081,6 @@ const styles = StyleSheet.create({
 	background: {
 		flex: 1,
 	},
-	// Responsiveness: KeyboardAvoidingView takes full space so keyboard pushes content up
 	keyboardAvoid: {
 		flex: 1,
 	},
@@ -1042,7 +1100,6 @@ const styles = StyleSheet.create({
 		width: '100%',
 		paddingHorizontal: 0,
 		marginTop: 0,
-		// paddingBottom set inline from screen height so layout is responsive
 	},
 	bottomSection: {
 		position: 'absolute',
@@ -1060,7 +1117,6 @@ const styles = StyleSheet.create({
 		marginTop: 4,
 		marginBottom: 4,
 		paddingHorizontal: 16,
-		// maxHeight set inline from screen height for responsiveness
 		flexGrow: 0,
 		flexShrink: 1,
 		minHeight: 0,

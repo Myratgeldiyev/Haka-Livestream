@@ -15,6 +15,7 @@ import { useFocusEffect } from '@react-navigation/native'
 import React, { useCallback, useMemo, useState } from 'react'
 import { ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { LinearGradient } from 'expo-linear-gradient'
 
 function resolveImageUrl(url: string | undefined | null): string {
 	if (!url || typeof url !== 'string') return ''
@@ -39,7 +40,7 @@ function mapStreamToListUser(item: LiveStreamListItem): LiveUser {
 			isLive: true,
 		}
 	}
-	
+
 	const imageUrl =
 		resolveImageUrl(item.room_image) ||
 		resolveImageUrl(item.owner?.profile_picture) ||
@@ -125,15 +126,25 @@ export default function LiveScreen() {
 					let list: LiveStreamListItem[] = []
 					if (Array.isArray(raw)) {
 						list = raw as LiveStreamListItem[]
-					} else if (raw && typeof raw === 'object' && 'results' in raw && Array.isArray((raw as any).results)) {
+					} else if (
+						raw &&
+						typeof raw === 'object' &&
+						'results' in raw &&
+						Array.isArray((raw as any).results)
+					) {
 						list = (raw as any).results as LiveStreamListItem[]
-					} else if (raw && typeof raw === 'object' && 'data' in raw && Array.isArray((raw as any).data)) {
+					} else if (
+						raw &&
+						typeof raw === 'object' &&
+						'data' in raw &&
+						Array.isArray((raw as any).data)
+					) {
 						list = (raw as any).data as LiveStreamListItem[]
 					}
 					console.log('[LiveTab] Mapped list length:', list.length)
 					setLiveStreamUsers(list.map(mapStreamToListUser))
 				})
-				.catch((error) => {
+				.catch(error => {
 					console.error('[LiveTab] getStreamsList error:', error)
 					setLiveStreamUsers([])
 				})
@@ -141,22 +152,31 @@ export default function LiveScreen() {
 			getNearbyLiveStreams()
 				.then((raw: unknown) => {
 					console.log('[LiveTab] getNearbyLiveStreams response:', raw)
-					// Handle different response formats
 					let list: LiveStreamListItem[] = []
 					if (Array.isArray(raw)) {
 						list = raw as LiveStreamListItem[]
-					} else if (raw && typeof raw === 'object' && 'results' in raw && Array.isArray((raw as any).results)) {
+					} else if (
+						raw &&
+						typeof raw === 'object' &&
+						'results' in raw &&
+						Array.isArray((raw as any).results)
+					) {
 						list = (raw as any).results as LiveStreamListItem[]
-					} else if (raw && typeof raw === 'object' && 'data' in raw && Array.isArray((raw as any).data)) {
+					} else if (
+						raw &&
+						typeof raw === 'object' &&
+						'data' in raw &&
+						Array.isArray((raw as any).data)
+					) {
 						list = (raw as any).data as LiveStreamListItem[]
 					}
 					setNearbyStreamUsers(list.map(mapStreamToListUser))
 				})
-				.catch((error) => {
+				.catch(error => {
 					console.error('[LiveTab] getNearbyLiveStreams error:', error)
 					setNearbyStreamUsers([])
 				})
-			getFollowingStreams().catch((error) => {
+			getFollowingStreams().catch(error => {
 				console.error('[LiveTab] getFollowingStreams error:', error)
 			})
 		}, [getStreamsList, getNearbyLiveStreams, getFollowingStreams]),
@@ -165,28 +185,36 @@ export default function LiveScreen() {
 	const content = useMemo(() => {
 		switch (activeTab) {
 			case 'live':
-				return (
-					<LiveTab users={liveStreamUsers} isLoading={isLiveTabLoading} />
-				)
+				return <LiveTab users={liveStreamUsers} isLoading={isLiveTabLoading} />
 			case 'new':
 				return <NewTab users={mockUsers} />
 			case 'follow':
-				return (
-					<FollowTab
-						users={followingStreams.map(mapStreamToListUser)}
-					/>
-				)
+				return <FollowTab users={followingStreams.map(mapStreamToListUser)} />
 			case 'nearby':
 				return <NearbyTab users={nearbyStreamUsers} />
 			default:
 				return null
 		}
-	}, [activeTab, liveStreamUsers, nearbyStreamUsers, followingStreams, isLiveTabLoading])
+	}, [
+		activeTab,
+		liveStreamUsers,
+		nearbyStreamUsers,
+		followingStreams,
+		isLiveTabLoading,
+	])
 
 	return (
 		<View style={styles.container}>
-			<Header activeTab={activeTab} onTabChange={setActiveTab} />
-			<CategoryFilters />
+			<LinearGradient
+				colors={[colors.primaryLight, colors.primaryLight, colors.white]}
+				locations={[0, 0.5, 1]}
+				style={styles.headerGradient}
+				start={{ x: 0.5, y: 0 }}
+				end={{ x: 0.5, y: 1 }}
+			>
+				<Header activeTab={activeTab} onTabChange={setActiveTab} />
+				<CategoryFilters />
+			</LinearGradient>
 
 			<ScrollView
 				style={styles.scrollView}
@@ -212,6 +240,10 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		backgroundColor: colors.white,
+	},
+
+	headerGradient: {
+		width: '100%',
 	},
 
 	scrollView: {

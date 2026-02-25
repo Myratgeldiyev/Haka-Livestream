@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient'
-import React, { memo, useCallback, useRef } from 'react'
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 import ScorePkIcon from '../ui/icons/chat/ScorePkIcon'
@@ -7,7 +7,8 @@ import SeatPkIcon from '../ui/icons/chat/seatPkIcon'
 import { PK_COLORS, PK_START_OVERLAY } from './constants'
 import type { PKStartOverlayExpandedProps, PKUser } from './types'
 
-const DEBOUNCE_MS = 380
+const DEBOUNCE_MS = 220
+const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 }
 
 function formatScore(n: number): string {
 	return n.toLocaleString('en-US')
@@ -68,7 +69,7 @@ function ActionCircle({
 		onPress()
 	}, [onPress])
 	return (
-		<Pressable onPress={handlePress}>
+		<Pressable onPress={handlePress} hitSlop={HIT_SLOP}>
 			<SeatPkIcon />
 		</Pressable>
 	)
@@ -95,11 +96,20 @@ function CollapseCircle({
 				pressed && styles.circleBtnPressed,
 			]}
 			onPress={handlePress}
+			hitSlop={HIT_SLOP}
 		>
 			{children ?? <View style={styles.circleBtnInner} />}
 		</Pressable>
 	)
 }
+const COUNTDOWN_SECONDS = 5 * 60
+
+function formatTime(remainingSeconds: number): string {
+	const m = Math.floor(remainingSeconds / 60)
+	const s = remainingSeconds % 60
+	return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
 function PKStartOverlayExpandedInner({
 	userA,
 	userB,
@@ -109,6 +119,23 @@ function PKStartOverlayExpandedInner({
 	videoPlaying = false,
 	onEnterPKBattle,
 }: PKStartOverlayExpandedProps) {
+	const [remaining, setRemaining] = useState(COUNTDOWN_SECONDS)
+
+	useEffect(() => {
+		if (remaining <= 0) {
+			onCallEnd?.()
+			return
+		}
+		const id = setInterval(() => {
+			setRemaining(s => {
+				const next = Math.max(0, s - 1)
+				if (next === 0) clearInterval(id)
+				return next
+			})
+		}, 1000)
+		return () => clearInterval(id)
+	}, [remaining, onCallEnd])
+
 	const scoreA = userA.score
 	const scoreB = userB.score
 	const total = scoreA + scoreB
@@ -133,7 +160,7 @@ function PKStartOverlayExpandedInner({
 			>
 				<View style={styles.badge}>
 					<ScorePkIcon />
-					<Text style={styles.badgeTime}>04:42</Text>
+					<Text style={styles.badgeTime}>{formatTime(remaining)}</Text>
 				</View>
 
 				<View style={styles.main}>
@@ -211,6 +238,7 @@ function PKStartOverlayExpandedInner({
 								pressed && styles.baslaBtnPressed,
 							]}
 							onPress={onEnterPKBattle}
+							hitSlop={HIT_SLOP}
 						>
 							<Text style={styles.baslaBtnText}>Basla</Text>
 						</Pressable>
@@ -224,6 +252,7 @@ function PKStartOverlayExpandedInner({
 							pressed && styles.sendGiftBtnPressed,
 						]}
 						onPress={onSendGift}
+						hitSlop={HIT_SLOP}
 					>
 						<Text style={styles.sendGiftText}>Send gift</Text>
 					</Pressable>
@@ -233,6 +262,7 @@ function PKStartOverlayExpandedInner({
 							pressed && styles.callEndBtnPressed,
 						]}
 						onPress={onCallEnd}
+						hitSlop={HIT_SLOP}
 					>
 						<HangUpIcon />
 					</Pressable>

@@ -77,7 +77,9 @@ export function TopUserInfo({
 					</View>
 				</Pressable>
 				<View style={styles.followButtonWrap}>
-					{isFollowing ? (
+					{userRole === 'owner' ? (
+						<CenterBadge />
+					) : isFollowing ? (
 						<CenterBadge onPress={onToggleFollow} />
 					) : (
 						<FollowRoomIcon onPress={onToggleFollow} />

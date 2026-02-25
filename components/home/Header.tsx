@@ -69,7 +69,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onTabChange }) => {
 
 const styles = StyleSheet.create({
 	safeArea: {
-		backgroundColor: colors.primaryLight,
+		backgroundColor: 'transparent',
 	},
 
 	container: {

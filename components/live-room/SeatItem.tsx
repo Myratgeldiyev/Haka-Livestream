@@ -94,6 +94,7 @@ export function SeatItem({
 	const wrapperRef = useRef<View>(null)
 	const [position, setPosition] = useState<Position | null>(null)
 	const glowOpacity = useSharedValue(0)
+	const waveProgress = useSharedValue(0)
 
 	useEffect(() => {
 		if (__DEV__) {
@@ -105,23 +106,41 @@ export function SeatItem({
 				0,
 				true,
 			)
+			waveProgress.value = withRepeat(
+				withTiming(1, { duration: 900 }),
+				0,
+				false,
+			)
 		} else {
 			glowOpacity.value = withTiming(0, { duration: 200 })
+			waveProgress.value = withTiming(0, { duration: 200 })
 		}
-	}, [isSpeaking, glowOpacity, seatNumber])
+	}, [isSpeaking, glowOpacity, waveProgress, seatNumber])
 
 	const glowAnimatedStyle = useAnimatedStyle(() => ({
 		opacity: glowOpacity.value,
 		shadowOpacity: glowOpacity.value,
 	}))
 	const glowStaticStyle = {
-		borderWidth: 3,
+		borderWidth: 2,
 		borderColor: glowColor,
 		shadowColor: glowColor,
 		shadowOffset: { width: 0, height: 0 } as const,
-		shadowRadius: 12,
-		elevation: 8,
+		shadowRadius: 8,
+		elevation: 4,
 	}
+
+	const waveAnimatedStyle = useAnimatedStyle(() => {
+		const scale = 1 + waveProgress.value * 0.25
+		const opacity =
+			waveProgress.value <= 0.5
+				? waveProgress.value * 0.6
+				: (1 - waveProgress.value) * 0.6
+		return {
+			opacity,
+			transform: [{ scale }],
+		}
+	})
 
 	const iconSize =
 		itemSize ?? (size === 'large' ? scaleWidth(48) : scaleWidth(44))
@@ -209,6 +228,18 @@ export function SeatItem({
 				{isOccupied ? (
 					<>
 						<View style={styles.avatarGlowWrap}>
+							<Animated.View
+								style={[
+									styles.speakingWave,
+									{
+										width: iconSize + 14,
+										height: iconSize + 14,
+										borderRadius: (iconSize + 14) / 2,
+									},
+									waveAnimatedStyle,
+								]}
+								pointerEvents='none'
+							/>
 							<Animated.View
 								style={[
 									styles.avatarGlowRing,
@@ -422,6 +453,12 @@ const styles = StyleSheet.create({
 		position: 'relative',
 		alignItems: 'center',
 		justifyContent: 'center',
+	},
+	speakingWave: {
+		position: 'absolute',
+		alignItems: 'center',
+		justifyContent: 'center',
+		backgroundColor: 'rgba(79, 195, 247, 0.24)',
 	},
 	avatarGlowRing: {
 		position: 'absolute',

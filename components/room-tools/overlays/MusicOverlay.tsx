@@ -137,51 +137,12 @@ function VinylRecordIllustration({ size }: { size: number }) {
 					r={innerRadius * 0.35}
 					fill='#2A2444'
 				/>
-				{/* Highlight */}
-				<Ellipse
-					cx={centerX - size * 0.12}
-					cy={centerY - size * 0.12}
-					rx={size * 0.08}
-					ry={size * 0.04}
-					fill='rgba(255,255,255,0.1)'
-					transform={`rotate(-45 ${centerX - size * 0.12} ${
-						centerY - size * 0.12
-					})`}
-				/>
 			</Svg>
-			{/* Tonearm overlay */}
-			<View
-				style={[vinylStyles.tonearm, { top: size * 0.08, right: size * 0.05 }]}
-			>
-				<Svg width={size * 0.35} height={size * 0.5} viewBox='0 0 60 80'>
-					{/* Arm base */}
-					<Circle cx={50} cy={10} r={8} fill='#4A4A4A' />
-					{/* Arm */}
-					<Rect
-						x={20}
-						y={8}
-						width={32}
-						height={4}
-						rx={2}
-						fill='#6B6B6B'
-						transform='rotate(35 50 10)'
-					/>
-					{/* Cartridge */}
-					<G transform='translate(8, 50) rotate(-10)'>
-						<Rect x={0} y={0} width={12} height={20} rx={2} fill='#4A4A4A' />
-						<Rect x={4} y={18} width={4} height={8} fill='#8A8A8A' />
-					</G>
-				</Svg>
-			</View>
 		</View>
 	)
 }
 
-const vinylStyles = StyleSheet.create({
-	tonearm: {
-		position: 'absolute',
-	},
-})
+const vinylStyles = StyleSheet.create({})
 
 export function MusicOverlay({
 	visible,

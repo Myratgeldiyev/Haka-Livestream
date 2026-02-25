@@ -230,6 +230,18 @@ export const joinChannelForVoiceAsListener = async (
  * Uses updateChannelMediaOptions so the channel actually publishes our mic (volume indication then reports > 0).
  */
 export const enableVoicePublishInChannel = async (appId: string): Promise<void> => {
+	// #region agent log
+	fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			location: 'agora.service:enableVoicePublishInChannel:start',
+			message: 'enableVoicePublishInChannel',
+			data: { hasEngineBeforeGet: !!engine, hypothesisId: 'H1' },
+			timestamp: Date.now(),
+		}),
+	}).catch(() => {})
+	// #endregion
 	const eng = await getAgoraEngine(appId)
 	eng.setClientRole(ClientRoleType.ClientRoleBroadcaster)
 	eng.enableLocalAudio(true)
@@ -242,6 +254,18 @@ export const enableVoicePublishInChannel = async (appId: string): Promise<void> 
 		enableAudioRecordingOrPlayout: true,
 	}
 	const ret = eng.updateChannelMediaOptions(options)
+	// #region agent log
+	fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			location: 'agora.service:enableVoicePublishInChannel:afterUpdate',
+			message: 'updateChannelMediaOptions result',
+			data: { ret, hypothesisId: 'H2' },
+			timestamp: Date.now(),
+		}),
+	}).catch(() => {})
+	// #endregion
 	if (ret !== 0) {
 		console.warn('[Agora] updateChannelMediaOptions returned', ret)
 	}
@@ -385,7 +409,37 @@ export const enableAudioVolumeIndication = async (
 	eng.enableAudioVolumeIndication(interval, smooth, reportVad)
 }
 
+/**
+ * Locally mute/unmute playback audio (remote voices) for the current channel.
+ * Does not affect microphone publish state or hit any backend APIs.
+ */
+export const setPlaybackMuted = async (
+	appId: string,
+	muted: boolean,
+): Promise<void> => {
+	const eng = await getAgoraEngine(appId)
+	try {
+		// adjustPlaybackSignalVolume controls overall playback volume for the local user.
+		eng.adjustPlaybackSignalVolume(muted ? 0 : 100)
+	} catch (e) {
+		console.warn('[Agora] setPlaybackMuted failed:', e)
+		throw e
+	}
+}
+
 export const muteLocalAudio = async (): Promise<void> => {
+	// #region agent log
+	fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			location: 'agora.service:muteLocalAudio:entry',
+			message: 'muteLocalAudio',
+			data: { hasEngine: !!engine, hypothesisId: 'H1' },
+			timestamp: Date.now(),
+		}),
+	}).catch(() => {})
+	// #endregion
 	if (!engine) return
 	console.log('[Agora] Muting local audio')
 	await engine.enableLocalAudio(false)
@@ -393,6 +447,18 @@ export const muteLocalAudio = async (): Promise<void> => {
 }
 
 export const unmuteLocalAudio = async (): Promise<void> => {
+	// #region agent log
+	fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			location: 'agora.service:unmuteLocalAudio:entry',
+			message: 'unmuteLocalAudio',
+			data: { hasEngine: !!engine, hypothesisId: 'H1' },
+			timestamp: Date.now(),
+		}),
+	}).catch(() => {})
+	// #endregion
 	if (!engine) return
 	console.log('[Agora] Unmuting local audio')
 	await engine.enableLocalAudio(true)

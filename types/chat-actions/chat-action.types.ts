@@ -37,6 +37,8 @@ export interface ChatActionOverlayProps {
 	visible: boolean
 	onClose: () => void
 	user: ChatUser | null
+	/** When true, show moderation actions (kick out, follow, chat, gift, call). */
+	canModerateActions?: boolean
 	onFollow?: (user: ChatUser) => void
 	onUnfollow?: (user: ChatUser) => void
 	onChat?: (user: ChatUser) => void
@@ -51,6 +53,7 @@ export interface ChatActionOverlayProps {
 export interface ChatActionContentProps {
 	user: ChatUser
 	onKickOutPress: () => void
+	canModerateActions?: boolean
 	onFollow?: () => void
 	onUnfollow?: () => void
 	isFollowed?: boolean

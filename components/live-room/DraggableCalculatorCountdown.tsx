@@ -1,6 +1,6 @@
 import { fontSizes, fontWeights } from '@/constants/typography'
 import { LinearGradient } from 'expo-linear-gradient'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Dimensions, StyleSheet, Text, View } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, {
@@ -108,19 +108,6 @@ export function DraggableCalculatorCountdown({
 		}
 	}, [visible])
 
-	const clampAndSave = useCallback(
-		(proposedX: number, proposedY: number) => {
-			const { minX, minY, maxX, maxY } = boundsRef.current
-			const x = Math.min(Math.max(proposedX, minX), maxX)
-			const y = Math.min(Math.max(proposedY, minY), maxY)
-			translateX.value = 0
-			translateY.value = 0
-			offsetX.value = x
-			offsetY.value = y
-		},
-		[offsetX, offsetY, translateX, translateY],
-	)
-
 	const panGesture = Gesture.Pan()
 		.minDistance(8)
 		.onUpdate(e => {
@@ -130,7 +117,13 @@ export function DraggableCalculatorCountdown({
 		.onEnd(e => {
 			const proposedX = offsetX.value + e.translationX
 			const proposedY = offsetY.value + e.translationY
-			runOnJS(clampAndSave)(proposedX, proposedY)
+			const { minX, minY, maxX, maxY } = boundsRef.current
+			const clampedX = Math.min(Math.max(proposedX, minX), maxX)
+			const clampedY = Math.min(Math.max(proposedY, minY), maxY)
+			offsetX.value = clampedX
+			offsetY.value = clampedY
+			translateX.value = 0
+			translateY.value = 0
 		})
 
 	const animatedStyle = useAnimatedStyle(() => ({

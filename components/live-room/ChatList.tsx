@@ -31,6 +31,8 @@ export interface ChatMessageItem {
 interface ChatListProps {
 	messages: ChatMessageType[] | ChatMessageItem[]
 	statusText?: string | null
+	/** When true, show moderation actions (kick out, follow, chat, gift, call). */
+	canModerateActions?: boolean
 }
 
 function isChatMessage(
@@ -83,7 +85,11 @@ function ChatRow({
 	)
 }
 
-export function ChatList({ messages, statusText }: ChatListProps) {
+export function ChatList({
+	messages,
+	statusText,
+	canModerateActions = false,
+}: ChatListProps) {
 	const [selectedUser, setSelectedUser] = useState<ChatUser | null>(null)
 	const flatListRef = useRef<FlatList>(null)
 	const { data, isLoading, error } = useUserProfile(selectedUser?.id ?? null)
@@ -176,6 +182,7 @@ export function ChatList({ messages, statusText }: ChatListProps) {
 				onClose={handleClose}
 				user={selectedUser}
 				level={data?.level}
+				canModerateActions={canModerateActions}
 			/>
 		</View>
 	)

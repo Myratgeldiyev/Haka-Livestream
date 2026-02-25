@@ -45,30 +45,20 @@ export function VoiceOnOverlay({
 	onToggle,
 	streamIdForMute,
 }: VoiceOnOverlayProps) {
-	const chatIsMuted = useLiveChatStore(s => s.isMuted)
-	const streamMuted = useLiveStreamStore(s => s.streamMuted)
-	const isMuted = streamIdForMute ? streamMuted : chatIsMuted
+	const chatPlaybackMuted = useLiveChatStore(s => s.roomPlaybackMuted)
+	const streamPlaybackMuted = useLiveStreamStore(s => s.streamPlaybackMuted)
+	const isPlaybackMuted = streamIdForMute ? streamPlaybackMuted : chatPlaybackMuted
 	const chatRoomId = useLiveChatStore(s => s.roomId)
-	const chatMuteMyself = useLiveChatStore(s => s.muteMyself)
-	const chatUnmuteMyself = useLiveChatStore(s => s.unmuteMyself)
-	const streamMuteMyself = useLiveStreamStore(s => s.muteMyself)
-	const streamUnmuteMyself = useLiveStreamStore(s => s.unmuteMyself)
+	const setRoomPlaybackMuted = useLiveChatStore(s => s.setRoomPlaybackMuted)
+	const setStreamPlaybackMuted = useLiveStreamStore(s => s.setStreamPlaybackMuted)
 
 	const handleToggle = async () => {
 		if (streamIdForMute) {
-			if (isMuted) {
-				await streamUnmuteMyself(streamIdForMute)
-			} else {
-				await streamMuteMyself(streamIdForMute)
-			}
+			await setStreamPlaybackMuted(!isPlaybackMuted)
 		} else if (chatRoomId) {
-			if (isMuted) {
-				await chatUnmuteMyself(chatRoomId)
-			} else {
-				await chatMuteMyself(chatRoomId)
-			}
+			await setRoomPlaybackMuted(!isPlaybackMuted)
 		}
-		onToggle?.(!isMuted)
+		onToggle?.(!isPlaybackMuted)
 	}
 
 	return (
@@ -92,8 +82,10 @@ export function VoiceOnOverlay({
 					{/* Toggle Button */}
 					<Pressable style={styles.toggleButton} onPress={handleToggle}>
 						{/* Dynamically display mute/unmute icons */}
-						{isMuted ? <VoiceOff /> : <VoiceOff />}
-						<Text style={styles.toggleText}>{isMuted ? 'Unmute' : 'Mute'}</Text>
+						{isPlaybackMuted ? <VoiceOff /> : <VoiceOff />}
+						<Text style={styles.toggleText}>
+							{isPlaybackMuted ? 'Unmute' : 'Mute'}
+						</Text>
 					</Pressable>
 				</View>
 			</View>

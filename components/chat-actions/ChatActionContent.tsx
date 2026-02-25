@@ -98,6 +98,7 @@ function ActionButton({
 export function ChatActionContent({
 	user,
 	onKickOutPress,
+	canModerateActions = false,
 	onFollow,
 	onUnfollow,
 	isFollowed,
@@ -181,31 +182,39 @@ export function ChatActionContent({
 				<StatItem count={user.visitorsCount || 0} label='Visitors' />
 			</View>
 
-			<Pressable style={styles.kickOutSection} onPress={onKickOutPress}>
-				<View style={styles.kickOutIconContainer}>
-					<KickOutIcon />
-				</View>
-				<Text style={styles.kickOutText}>Kick out</Text>
-			</Pressable>
+			{canModerateActions && (
+				<>
+					<Pressable style={styles.kickOutSection} onPress={onKickOutPress}>
+						<View style={styles.kickOutIconContainer}>
+							<KickOutIcon />
+						</View>
+						<Text style={styles.kickOutText}>Kick out</Text>
+					</Pressable>
 
-			<View style={styles.actionsRow}>
-				<ActionButton
-					label={isFollowed ? 'Unfollow' : 'Follow'}
-					icon={isFollowed ? <ChatUnfollowIcon /> : <ChatFollowIcon />}
-					onPress={isFollowed ? onUnfollow : onFollow}
-				/>
-				<ActionButton
-					label='Chat'
-					icon={<ChatMessageIcon />}
-					onPress={onChat}
-				/>
-				<ActionButton
-					label='Send Gift'
-					icon={<ChatPrizeIcon />}
-					onPress={onSendGift}
-				/>
-				<ActionButton label='Call' icon={<ChatCallIcon />} onPress={onCall} />
-			</View>
+					<View style={styles.actionsRow}>
+						<ActionButton
+							label={isFollowed ? 'Unfollow' : 'Follow'}
+							icon={isFollowed ? <ChatUnfollowIcon /> : <ChatFollowIcon />}
+							onPress={isFollowed ? onUnfollow : onFollow}
+						/>
+						<ActionButton
+							label='Chat'
+							icon={<ChatMessageIcon />}
+							onPress={onChat}
+						/>
+						<ActionButton
+							label='Send Gift'
+							icon={<ChatPrizeIcon />}
+							onPress={onSendGift}
+						/>
+						<ActionButton
+							label='Call'
+							icon={<ChatCallIcon />}
+							onPress={onCall}
+						/>
+					</View>
+				</>
+			)}
 		</View>
 	)
 }

@@ -4,6 +4,7 @@ import { Animated, Dimensions, PanResponder } from 'react-native'
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 const PAD = 8
 const DRAG_THRESHOLD_MS = 220
+const DRAG_MOVE_THRESHOLD_PX = 5
 
 export function usePKStartOverlayGesture(
 	cardSize: { width: number; height: number },
@@ -86,9 +87,12 @@ export function usePKStartOverlayGesture(
 		() =>
 			PanResponder.create({
 				onStartShouldSetPanResponder: () => false,
-				onMoveShouldSetPanResponder: () => {
+				onMoveShouldSetPanResponder: (_evt, gestureState) => {
 					const elapsed = Date.now() - touchStartTimeRef.current
-					if (elapsed > DRAG_THRESHOLD_MS) {
+					const moved =
+						Math.abs(gestureState.dx) > DRAG_MOVE_THRESHOLD_PX ||
+						Math.abs(gestureState.dy) > DRAG_MOVE_THRESHOLD_PX
+					if (elapsed > DRAG_THRESHOLD_MS && moved) {
 						dragEnabledRef.current = true
 						return true
 					}
@@ -104,14 +108,24 @@ export function usePKStartOverlayGesture(
 					{ useNativeDriver: false }
 				),
 				onPanResponderRelease: (_evt, gesture) => {
-					position.flattenOffset()
 					if (dragEnabledRef.current) {
-						const nextX = clamp(offset.x + gesture.dx, bounds.minX, bounds.maxX)
-						const nextY = clamp(offset.y + gesture.dy, bounds.minY, bounds.maxY)
-						offset.x = nextX
-						offset.y = nextY
-						position.setValue({ x: nextX, y: nextY })
+						const finalX = clamp(
+							offset.x + gesture.dx,
+							bounds.minX,
+							bounds.maxX,
+						)
+						const finalY = clamp(
+							offset.y + gesture.dy,
+							bounds.minY,
+							bounds.maxY,
+						)
+						position.flattenOffset()
+						offset.x = finalX
+						offset.y = finalY
+						position.setValue({ x: finalX, y: finalY })
 						dragEnabledRef.current = false
+					} else {
+						position.flattenOffset()
 					}
 				},
 				onPanResponderTerminate: () => {
@@ -135,21 +149,33 @@ export function usePKStartOverlayGesture(
 				},
 				onPanResponderMove: (_, gestureState) => {
 					const elapsed = Date.now() - touchStartTimeRef.current
-					if (elapsed > DRAG_THRESHOLD_MS) dragEnabledRef.current = true
+					const moved =
+						Math.abs(gestureState.dx) > DRAG_MOVE_THRESHOLD_PX ||
+						Math.abs(gestureState.dy) > DRAG_MOVE_THRESHOLD_PX
+					if (elapsed > DRAG_THRESHOLD_MS && moved) dragEnabledRef.current = true
 					if (dragEnabledRef.current) {
 						position.setValue({ x: gestureState.dx, y: gestureState.dy })
 					}
 				},
 				onPanResponderRelease: (_evt, gesture) => {
-					position.flattenOffset()
 					if (dragEnabledRef.current) {
-						const nextX = clamp(offset.x + gesture.dx, bounds.minX, bounds.maxX)
-						const nextY = clamp(offset.y + gesture.dy, bounds.minY, bounds.maxY)
-						offset.x = nextX
-						offset.y = nextY
-						position.setValue({ x: nextX, y: nextY })
+						const finalX = clamp(
+							offset.x + gesture.dx,
+							bounds.minX,
+							bounds.maxX,
+						)
+						const finalY = clamp(
+							offset.y + gesture.dy,
+							bounds.minY,
+							bounds.maxY,
+						)
+						position.flattenOffset()
+						offset.x = finalX
+						offset.y = finalY
+						position.setValue({ x: finalX, y: finalY })
 						dragEnabledRef.current = false
 					} else {
+						position.flattenOffset()
 						onMiniTap?.()
 					}
 				},

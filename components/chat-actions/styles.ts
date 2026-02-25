@@ -1,41 +1,40 @@
 import { Dimensions, StyleSheet } from 'react-native'
 import { spacing as globalSpacing } from '@/constants/spacing'
-import { fontSizes as globalFontSizes, fontWeights as globalFontWeights } from '@/constants/typography'
+import {
+	fontSizes as globalFontSizes,
+	fontWeights as globalFontWeights,
+} from '@/constants/typography'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 export const ANIMATION_DURATION = 300
 
-// Use percentage-based height for better responsiveness
-export const OVERLAY_HEIGHT = SCREEN_HEIGHT * 0.72
+const SMALL_SCREEN_HEIGHT = 700
+const LARGE_SCREEN_MAX_HEIGHT = 520
 
-// Helper function to get responsive overlay height (call in components)
-export const getOverlayHeight = (screenHeight: number) => screenHeight * 0.72
+export const OVERLAY_HEIGHT =
+	SCREEN_HEIGHT <= SMALL_SCREEN_HEIGHT
+		? SCREEN_HEIGHT * 0.68
+		: Math.min(SCREEN_HEIGHT * 0.56, LARGE_SCREEN_MAX_HEIGHT)
 
 export const COLORS = {
 	background: '#252038',
 	overlay: 'rgba(0, 0, 0, 0.5)',
-
 	textPrimary: '#FFFFFF',
 	textSecondary: 'rgba(255, 255, 255, 0.7)',
 	textMuted: 'rgba(255, 255, 255, 0.5)',
 	textHighlight: '#FF2D55',
-
 	buttonPrimary: '#7C3AED',
 	buttonPrimaryText: '#FFFFFF',
-
 	tagLevel: '#FF6B8A',
 	tagCountry: '#3D3556',
 	tagDiamond: '#3D3556',
 	tagSvip: '#3D3556',
 	tagMember: '#3D3556',
-
 	radioUnselected: '#3D3556',
 	radioSelected: '#7C3AED',
-
 	iconBackground: '#3D3556',
 	divider: 'rgba(255, 255, 255, 0.1)',
-
 	avatarBorder: '#7C3AED',
 	verifiedBadge: '#3B82F6',
 }
@@ -114,9 +113,9 @@ export const sharedChatActionStyles = StyleSheet.create({
 		backgroundColor: COLORS.background,
 		borderTopLeftRadius: BORDER_RADIUS.xxl,
 		borderTopRightRadius: BORDER_RADIUS.xxl,
-		paddingTop: 0,
+		paddingTop: SPACING.lg,
 		paddingHorizontal: SPACING.xl,
-		paddingBottom: SPACING.xxxl,
+		paddingBottom: SPACING.lg,
 		overflow: 'visible',
 	},
 	title: {
@@ -124,7 +123,7 @@ export const sharedChatActionStyles = StyleSheet.create({
 		fontWeight: FONT_WEIGHTS.semibold,
 		color: COLORS.textPrimary,
 		textAlign: 'center',
-		marginBottom: SPACING.xl,
+		marginBottom: SPACING.lg,
 	},
 	iconPlaceholder: {
 		backgroundColor: COLORS.iconBackground,

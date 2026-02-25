@@ -15,6 +15,7 @@ import {
 	joinChannelWithVideo,
 	muteLocalAudio,
 	resetAgoraEngine,
+	setPlaybackMuted,
 	unmuteLocalAudio,
 } from '@/services/agora/agora.service'
 import { Camera } from 'expo-camera'
@@ -120,9 +121,12 @@ interface LiveStreamState {
 	streamDetails: LiveStreamDetailsResponse | null
 	/** Role from enterStream API (when joining as viewer). Owner is set in startStream. */
 	currentStreamRole: LiveStreamUserRole | null
-	/** Current user mute state in stream (for Voice On/Off UI). */
+	/** Current user mic mute state in stream (for bottom bar / mic UI). */
 	streamMuted: boolean
 	setStreamMuted: (value: boolean) => void
+	/** Local playback mute for this stream (room audio on this device only). */
+	streamPlaybackMuted: boolean
+	setStreamPlaybackMuted: (muted: boolean) => Promise<void>
 	minimizedStreamId: string | null
 	minimizedStreamImage: string | null
 	minimizedStreamTitle: string | null
@@ -231,12 +235,23 @@ interface LiveStreamState {
 	getFollowingStreams: () => Promise<LiveStreamDetailsResponse[]>
 }
 
-export const useLiveStreamStore = create<LiveStreamState>(set => ({
+export const useLiveStreamStore = create<LiveStreamState>((set) => ({
 	liveStream: null,
 	streamDetails: null,
 	currentStreamRole: null,
 	streamMuted: false,
 	setStreamMuted: (value: boolean) => set({ streamMuted: value }),
+	streamPlaybackMuted: false,
+	setStreamPlaybackMuted: async (muted: boolean) => {
+		const appId = process.env.EXPO_PUBLIC_AGORA_APP_ID
+		if (!appId) return
+		try {
+			await setPlaybackMuted(appId, muted)
+			set({ streamPlaybackMuted: muted })
+		} catch (e) {
+			console.warn('[liveStream.store] setStreamPlaybackMuted failed:', e)
+		}
+	},
 	minimizedStreamId: null,
 	minimizedStreamImage: null,
 	minimizedStreamTitle: null,

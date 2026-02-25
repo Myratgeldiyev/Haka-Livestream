@@ -42,7 +42,7 @@ export const CategoryFilters: React.FC = () => {
 }
 const styles = StyleSheet.create({
 	container: {
-		backgroundColor: colors.primaryLight,
+		backgroundColor: 'transparent',
 		paddingVertical: spacing.sm,
 	},
 
@@ -54,7 +54,9 @@ const styles = StyleSheet.create({
 	cardsRow: {
 		flexDirection: 'row',
 		justifyContent: 'space-between',
+		alignItems: 'center',
 		paddingHorizontal: spacing.lg,
 		marginTop: spacing.sm,
+		gap: spacing.sm,
 	},
 })

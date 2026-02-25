@@ -14,7 +14,9 @@ import {
 	Text,
 	TextInput,
 	View,
+	useWindowDimensions,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { ClipPath, Defs, G, Path, Rect } from 'react-native-svg'
 import { Gender } from '../../api/auth/auth.types'
 import { useCompleteSignup } from '../../hooks/useCompleteSignup'
@@ -25,6 +27,12 @@ import {
 	isValidAge,
 	MIN_AGE,
 } from '../../utils/age.utils'
+
+const HORIZONTAL_PADDING = 20
+const MAX_CONTENT_WIDTH = 400
+const DROPDOWN_MAX_HEIGHT = 300
+const verticalScale = (size: number, screenHeight: number) =>
+	Math.min(size * 1.2, (screenHeight / 812) * size)
 const ArrowDown = () => (
 	<Svg width={17} height={13} viewBox='0 0 17 13' fill='none'>
 		<Path
@@ -132,6 +140,35 @@ export default function RegisterScreen() {
 	const [date, setDate] = useState<DateValue | null>(null)
 	const [open, setOpen] = useState(false)
 
+	const insets = useSafeAreaInsets()
+	const { width: screenWidth, height: screenHeight } = useWindowDimensions()
+
+	const contentWidth = useMemo(
+		() => Math.min(screenWidth - 2 * HORIZONTAL_PADDING, MAX_CONTENT_WIDTH),
+		[screenWidth],
+	)
+	const dropdownHeight = useMemo(
+		() => Math.min(DROPDOWN_MAX_HEIGHT, screenHeight * 0.4),
+		[screenHeight],
+	)
+
+	const dynamicStyles = useMemo(
+		() => ({
+			topBar: {
+				paddingTop: insets.top,
+				paddingHorizontal: HORIZONTAL_PADDING,
+			},
+			centerBlock: {
+				paddingHorizontal: HORIZONTAL_PADDING,
+			},
+			inputBlock: { width: contentWidth, maxWidth: contentWidth },
+			inputWrapper: { width: contentWidth },
+			button: { width: contentWidth },
+			dropdownOverlay: { height: dropdownHeight },
+		}),
+		[insets.top, screenHeight, contentWidth, dropdownHeight],
+	)
+
 	const { completeSignup, loading, error, success, reset } = useCompleteSignup()
 
 	const ageError = useMemo(() => {
@@ -219,7 +256,7 @@ export default function RegisterScreen() {
 	}, [genderOpen])
 	return (
 		<LinearGradient colors={['#FFDDEC', '#FFFFFF']} style={styles.background}>
-			<View style={styles.topBar}>
+			<View style={[styles.topBar, dynamicStyles.topBar]}>
 				<Pressable onPress={() => router.back()}>
 					<Svg width={13} height={17} viewBox='0 0 13 17' fill='none'>
 						<Path
@@ -231,30 +268,23 @@ export default function RegisterScreen() {
 
 				<Text style={styles.headerTitle}>Register your account</Text>
 
-				<View style={{ width: 13 }} />
+				<View style={styles.topBarSpacer} />
 			</View>
 
 			<KeyboardAvoidingView
-				style={{ flex: 1 }}
+				style={styles.keyboardView}
 				behavior={Platform.OS === 'ios' ? 'padding' : undefined}
 			>
-				<View style={styles.centerBlock}>
-					<View style={styles.inputBlock}>
-						<View style={{ alignItems: 'center' }}>
-							<View
-								style={{
-									width: 60,
-									height: 60,
-									backgroundColor: '#f9f9f9',
-									borderRadius: 40,
-								}}
-							/>
-							<Text style={{ fontSize: 12, fontWeight: '600', color: '#000' }}>
+				<View style={[styles.centerBlock, dynamicStyles.centerBlock]}>
+					<View style={[styles.inputBlock, dynamicStyles.inputBlock]}>
+						<View style={styles.avatarSection}>
+							<View style={styles.avatarPlaceholder} />
+							<Text style={styles.profileUploadLabel}>
 								Upload your profile picture
 							</Text>
 						</View>
 						<Text style={styles.label}>Name</Text>
-						<View style={styles.inputWrapper}>
+						<View style={[styles.inputWrapper, dynamicStyles.inputWrapper]}>
 							<NameIcon />
 							<TextInput
 								placeholder='Enter your name'
@@ -270,7 +300,7 @@ export default function RegisterScreen() {
 
 						<RequiredLabel text='Country' />
 						<Pressable
-							style={styles.inputWrapper}
+							style={[styles.inputWrapper, dynamicStyles.inputWrapper]}
 							onPress={() => setCountryOpen(true)}
 						>
 							<CountryIcon />
@@ -284,7 +314,7 @@ export default function RegisterScreen() {
 
 						<RequiredLabel text='Gender' />
 						<Pressable
-							style={styles.inputWrapper}
+							style={[styles.inputWrapper, dynamicStyles.inputWrapper]}
 							onPress={() => setGenderOpen(true)}
 						>
 							<GenderIcon />
@@ -299,7 +329,11 @@ export default function RegisterScreen() {
 
 						<Text style={styles.label}>Date of Birth</Text>
 						<Pressable
-							style={[styles.inputWrapper, ageError && styles.inputError]}
+							style={[
+								styles.inputWrapper,
+								dynamicStyles.inputWrapper,
+								ageError && styles.inputError,
+							]}
 							onPress={() => setOpen(true)}
 						>
 							<DateIcon />
@@ -317,6 +351,7 @@ export default function RegisterScreen() {
 							<View
 								style={[
 									styles.button,
+									dynamicStyles.button,
 									isButtonDisabled && styles.buttonDisabled,
 								]}
 							>
@@ -339,6 +374,7 @@ export default function RegisterScreen() {
 						<Animated.View
 							style={[
 								styles.dropdownOverlay,
+								dynamicStyles.dropdownOverlay,
 								{
 									backgroundColor: '#fff',
 									paddingBottom: 30,
@@ -374,8 +410,10 @@ export default function RegisterScreen() {
 						onPress={() => setCountryOpen(false)}
 					/>
 
-					<Animated.View style={styles.dropdownOverlay}>
-						<View style={{ backgroundColor: '#fff', padding: 20 }}>
+					<Animated.View
+						style={[styles.dropdownOverlay, dynamicStyles.dropdownOverlay]}
+					>
+						<View style={styles.countryDropdownContent}>
 							{['China', 'Turkey', 'Turkmenistan', 'Russia', 'USA'].map(
 								item => (
 									<Pressable
@@ -384,9 +422,9 @@ export default function RegisterScreen() {
 											setCountry(item)
 											setCountryOpen(false)
 										}}
-										style={{ paddingVertical: 12 }}
+										style={styles.countryDropdownItem}
 									>
-										<Text style={{ fontSize: 16 }}>{item}</Text>
+										<Text style={styles.countryDropdownItemText}>{item}</Text>
 									</Pressable>
 								)
 							)}
@@ -402,27 +440,48 @@ const styles = StyleSheet.create({
 	background: {
 		flex: 1,
 	},
-
+	keyboardView: {
+		flex: 1,
+	},
 	centerBlock: {
 		flex: 1,
-		justifyContent: 'flex-start',
+		justifyContent: 'center',
 		alignItems: 'center',
-		paddingHorizontal: 20,
 		gap: 20,
-		marginTop: 80,
+	},
+	topBar: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+	},
+	topBarSpacer: {
+		width: 13,
+		minWidth: 13,
+	},
+	avatarSection: {
+		alignItems: 'center',
+	},
+	avatarPlaceholder: {
+		width: 60,
+		height: 60,
+		backgroundColor: '#f9f9f9',
+		borderRadius: 40,
+	},
+	profileUploadLabel: {
+		fontSize: 12,
+		fontWeight: '600',
+		color: '#000',
+		marginTop: 4,
 	},
 	dropdownOverlay: {
 		position: 'absolute',
 		bottom: 0,
 		left: 0,
 		right: 0,
-		height: 300,
 		backgroundColor: '#fff',
 		zIndex: 99,
 	},
-
 	inputBlock: {
-		width: 380,
 		gap: 10,
 	},
 	overlay: {
@@ -434,9 +493,7 @@ const styles = StyleSheet.create({
 		backgroundColor: 'transparent',
 		zIndex: 98,
 	},
-
 	inputWrapper: {
-		width: 380,
 		height: 56,
 		flexDirection: 'row',
 		alignItems: 'center',
@@ -448,54 +505,39 @@ const styles = StyleSheet.create({
 		fontSize: 16,
 		backgroundColor: 'transparent',
 	},
-
 	labelRow: {
 		marginTop: 10,
 		flexDirection: 'row',
 		alignItems: 'center',
 		color: '#000',
 	},
-
 	label: {
 		fontSize: 14,
 		fontWeight: '600',
 		color: '#000',
 	},
-
 	required: {
 		color: 'red',
 		fontSize: 14,
 		fontWeight: '600',
 	},
-
 	note: {
 		color: '#000',
 		fontSize: 12,
 		marginLeft: 4,
 		opacity: 0.8,
 	},
-
 	input: {
 		flex: 1,
 		fontSize: 14,
 		color: '#000',
 		backgroundColor: 'transparent',
 	},
-
 	inputIcon: {
 		width: 20,
 		height: 20,
 		marginRight: 5,
 	},
-
-	topBar: {
-		marginTop: 77,
-		paddingHorizontal: 20,
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'space-between',
-	},
-
 	headerTitle: {
 		fontWeight: '600',
 		fontSize: 20,
@@ -506,9 +548,7 @@ const styles = StyleSheet.create({
 		right: 0,
 		alignItems: 'center',
 	},
-
 	button: {
-		width: 380,
 		height: 55,
 		borderRadius: 10,
 		backgroundColor: '#5F22D9',
@@ -516,39 +556,43 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		marginTop: 10,
 	},
-
 	buttonDisabled: {
 		opacity: 0.6,
 	},
-
 	buttonText: {
 		fontSize: 16,
 		color: '#800080',
 	},
-
 	errorText: {
 		fontFamily: 'Poppins-Light',
 		fontSize: 12,
 		color: '#ff6b6b',
 		marginTop: 4,
 	},
-
 	ageErrorText: {
 		fontFamily: 'Poppins-Light',
 		fontSize: 12,
 		color: '#ff6b6b',
 		marginTop: 6,
 	},
-
 	inputError: {
 		borderColor: '#ff6b6b',
 	},
-
+	countryDropdownContent: {
+		backgroundColor: '#fff',
+		padding: 20,
+	},
+	countryDropdownItem: {
+		paddingVertical: 12,
+	},
+	countryDropdownItemText: {
+		fontSize: 16,
+		color: '#000',
+	},
 	bottom: {
 		paddingBottom: 30,
 		alignItems: 'center',
 	},
-
 	bottomText: {
 		fontSize: 12,
 		color: '#fff',

@@ -603,7 +603,11 @@ export default function LiveRoomScreen() {
 										: 'Public message disabled'}
 								</Text>
 								{publicMsgEnabled ? (
-									<ChatList messages={streamMessages} statusText={undefined} />
+									<ChatList
+										messages={streamMessages}
+										statusText={undefined}
+										canModerateActions={userRole === 'owner' || userRole === 'admin'}
+									/>
 								) : null}
 							</View>
 							<View>

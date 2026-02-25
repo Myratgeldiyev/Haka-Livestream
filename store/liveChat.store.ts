@@ -5,6 +5,7 @@ import {
 	ChatMessage,
 	EnterRoomResponse,
 	KickOutRequest,
+	RandomPkResponse,
 	RemoveAdminRequest,
 	RoomFollowerItem,
 	RoomResponse,
@@ -23,6 +24,7 @@ import {
 	leaveChannel,
 	muteLocalAudio,
 	resetAgoraEngine,
+	setPlaybackMuted,
 	unmuteLocalAudio,
 } from '@/services/agora/agora.service'
 import { tokenService } from '@/services/token.service'
@@ -49,6 +51,8 @@ import { create } from 'zustand'
 	error: string | null
 	activeRoom: RoomResponse | null
 	isMuted: boolean
+	/** Local playback mute for this chat room (room audio on this device only). */
+	roomPlaybackMuted: boolean
 	giftEffectsEnabled: boolean
 	callEnabled: boolean
 	muteMyself: (roomId: string) => Promise<void>
@@ -86,6 +90,7 @@ import { create } from 'zustand'
 	roomSeatCount: number
 	setRoomSeatCount: (count: number) => void
 	startPkBattle: (payload: StartPkPayload) => Promise<void>
+	startRandomPkBattle: (roomId: string) => Promise<RandomPkResponse>
 	muteUser: (userId: string) => Promise<void>
 	unmuteUser: (userId: string) => Promise<void>
 	minimizedRoomId: string | null
@@ -116,6 +121,8 @@ import { create } from 'zustand'
 	getFollowingRooms: () => Promise<LiveStreamDetailsResponse[]>
 	changeSeatChatRoom: (seatNumber: string) => Promise<ChangeSeatChatRoomResponse>
 	leaveSeatChatRoom: (seatNumber: string) => Promise<void>
+	/** Locally mute/unmute room playback audio (does not affect mic). */
+	setRoomPlaybackMuted: (muted: boolean) => Promise<void>
 	setPasswordChatRoom: (roomPassword: string) => Promise<void>
 	removePasswordChatRoom: () => Promise<void>
 }
@@ -137,6 +144,7 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 	activeRoom: null,
 	isConnecting: false,
 	isMuted: false,
+	roomPlaybackMuted: false,
 	giftEffectsEnabled: true,
 	callEnabled: true,
 	isJoined: false,
@@ -204,6 +212,18 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 	},
 	toggleCall: () => {
 		set(state => ({ callEnabled: !state.callEnabled }))
+	},
+
+	setRoomPlaybackMuted: async (muted: boolean) => {
+		const appId = process.env.EXPO_PUBLIC_AGORA_APP_ID
+		const { roomId } = get()
+		if (!appId || !roomId) return
+		try {
+			await setPlaybackMuted(appId, muted)
+			set({ roomPlaybackMuted: muted })
+		} catch (e) {
+			console.warn('[liveChat.store] setRoomPlaybackMuted failed:', e)
+		}
 	},
 
 	fetchRooms: async () => {
@@ -604,6 +624,18 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 			set({ isConnecting: true })
 
 			const permission = await Audio.requestPermissionsAsync()
+			// #region agent log
+			fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					location: 'liveChat.store:requestSpeakerRole:permission',
+					message: 'mic permission',
+					data: { granted: permission.granted, status: permission.status, hypothesisId: 'H4' },
+					timestamp: Date.now(),
+				}),
+			}).catch(() => {})
+			// #endregion
 			if (!permission.granted) {
 				throw new Error('Microphone permission denied')
 			}
@@ -616,11 +648,47 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 				seatNumber != null ? { seat_number: seatNumber } : undefined,
 			)
 
+			// Agora: only enable mic after we're in the channel (fixes intermittent "mic not working").
+			const maxWait = 15000
+			const pollMs = 100
+			let waited = 0
+			while (!get().isJoined && waited < maxWait) {
+				await new Promise<void>(r => setTimeout(r, pollMs))
+				waited += pollMs
+			}
+			if (!get().isJoined) {
+				throw new Error('Voice channel not ready. Please try again.')
+			}
+
 			const appId = process.env.EXPO_PUBLIC_AGORA_APP_ID
 			if (appId) {
 				await enableVoicePublishInChannel(appId)
+				// #region agent log
+				fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						location: 'liveChat.store:requestSpeakerRole:afterEnable',
+						message: 'after enableVoicePublishInChannel',
+						data: { hypothesisId: 'H5' },
+						timestamp: Date.now(),
+					}),
+				}).catch(() => {})
+				// #endregion
 				await new Promise<void>(r => setTimeout(r, 150))
 				await unmuteLocalAudio()
+				// #region agent log
+				fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						location: 'liveChat.store:requestSpeakerRole:afterUnmute',
+						message: 'after unmuteLocalAudio',
+						data: { hypothesisId: 'H5' },
+						timestamp: Date.now(),
+					}),
+				}).catch(() => {})
+				// #endregion
 			}
 			set({ role: 'listener', isMuted: false })
 		} catch (e: any) {
@@ -632,6 +700,18 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 	},
 
 	muteMyself: async (roomId: string) => {
+		// #region agent log
+		fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				location: 'liveChat.store:muteMyself:entry',
+				message: 'muteMyself called',
+				data: { roomId, hypothesisId: 'H3' },
+				timestamp: Date.now(),
+			}),
+		}).catch(() => {})
+		// #endregion
 		const { uid, users } = get()
 		const prevUsers = users
 
@@ -658,6 +738,18 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 	},
 
 	unmuteMyself: async (roomId: string) => {
+		// #region agent log
+		fetch('http://127.0.0.1:7244/ingest/b3b7846a-5311-4561-8036-c0a448b1983a', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				location: 'liveChat.store:unmuteMyself:entry',
+				message: 'unmuteMyself called',
+				data: { roomId, hypothesisId: 'H3' },
+				timestamp: Date.now(),
+			}),
+		}).catch(() => {})
+		// #endregion
 		const { uid, users } = get()
 		const prevUsers = users
 		set({
@@ -823,6 +915,17 @@ export const useLiveChatStore = create<LiveChatState>((set, get) => ({
 		try {
 			await initializeAuth()
 			await roomsApi.startPk(payload)
+		} catch (e: any) {
+			set({ error: e.message })
+			throw e
+		}
+	},
+
+	startRandomPkBattle: async (roomId: string) => {
+		try {
+			set({ error: null })
+			await initializeAuth()
+			return await roomsApi.startRandomPk({ room_id: roomId })
 		} catch (e: any) {
 			set({ error: e.message })
 			throw e

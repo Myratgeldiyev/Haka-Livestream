@@ -1,17 +1,10 @@
 import { fontSizes, fontWeights } from '@/constants/typography'
 import { Ionicons } from '@expo/vector-icons'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Dimensions, StyleSheet, Text, View } from 'react-native'
-import {
-	Gesture,
-	GestureDetector,
-	Pressable,
-} from 'react-native-gesture-handler'
-import Animated, {
-	runOnJS,
-	useAnimatedStyle,
-	useSharedValue,
-} from 'react-native-reanimated'
+import { Gesture, GestureDetector } from 'react-native-gesture-handler'
+import { Pressable } from 'react-native'
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import ChatKeepIcon from '../ui/icons/chat/ChatKeepIcon'
 
@@ -40,27 +33,38 @@ export function DraggableKeepExitOverlay({
 	const translateX = useSharedValue(0)
 	const translateY = useSharedValue(0)
 
+	const minX = useSharedValue(0)
+	const maxX = useSharedValue(0)
+	const minY = useSharedValue(0)
+	const maxY = useSharedValue(0)
+
 	const boundsRef = useRef({ minX: 0, minY: 0, maxX: 0, maxY: 0 })
 	const hasInitialized = useRef(false)
 
 	useEffect(() => {
 		if (!visible || cardSize.width <= 0 || cardSize.height <= 0) return
-		const minX = 0
-		const maxX = Math.max(0, SCREEN_WIDTH - cardSize.width)
-		const minY = insets.top + PAD
-		const maxY = SCREEN_HEIGHT - insets.bottom - cardSize.height - PAD
+		const minXVal = 0
+		const maxXVal = Math.max(0, SCREEN_WIDTH - cardSize.width)
+		const minYVal = insets.top + PAD
+		const maxYVal = SCREEN_HEIGHT - insets.bottom - cardSize.height - PAD
 		boundsRef.current = {
-			minX,
-			minY,
-			maxX,
-			maxY: Math.max(minY, maxY),
+			minX: minXVal,
+			minY: minYVal,
+			maxX: maxXVal,
+			maxY: Math.max(minYVal, maxYVal),
 		}
+		minX.value = minXVal
+		maxX.value = maxXVal
+		minY.value = minYVal
+		maxY.value = Math.max(minYVal, maxYVal)
 		if (!hasInitialized.current) {
 			hasInitialized.current = true
-			offsetX.value = (SCREEN_WIDTH - cardSize.width) / 2
-			offsetY.value = Math.min(Math.max(insets.top + PAD, minY), maxY)
+			const startX = (SCREEN_WIDTH - cardSize.width) / 2
+			const startY = Math.min(Math.max(insets.top + PAD, minYVal), maxYVal)
+			offsetX.value = startX
+			offsetY.value = startY
 		}
-	}, [visible, cardSize.width, cardSize.height, insets])
+	}, [visible, cardSize.width, cardSize.height, insets, minX, maxX, minY, maxY, offsetX, offsetY])
 
 	useEffect(() => {
 		if (!visible) {
@@ -69,19 +73,6 @@ export function DraggableKeepExitOverlay({
 			translateY.value = 0
 		}
 	}, [visible])
-
-	const clampAndSave = useCallback(
-		(proposedX: number, proposedY: number) => {
-			const { minX, minY, maxX, maxY } = boundsRef.current
-			const x = Math.min(Math.max(proposedX, minX), maxX)
-			const y = Math.min(Math.max(proposedY, minY), maxY)
-			translateX.value = 0
-			translateY.value = 0
-			offsetX.value = x
-			offsetY.value = y
-		},
-		[offsetX, offsetY, translateX, translateY],
-	)
 
 	const panGesture = Gesture.Pan()
 		.minDistance(20)
@@ -92,7 +83,12 @@ export function DraggableKeepExitOverlay({
 		.onEnd(e => {
 			const proposedX = offsetX.value + e.translationX
 			const proposedY = offsetY.value + e.translationY
-			runOnJS(clampAndSave)(proposedX, proposedY)
+			const clampedX = Math.min(Math.max(proposedX, minX.value), maxX.value)
+			const clampedY = Math.min(Math.max(proposedY, minY.value), maxY.value)
+			offsetX.value = clampedX
+			offsetY.value = clampedY
+			translateX.value = 0
+			translateY.value = 0
 		})
 
 	const animatedStyle = useAnimatedStyle(() => ({
@@ -109,52 +105,50 @@ export function DraggableKeepExitOverlay({
 			style={[StyleSheet.absoluteFill, styles.overlayRoot]}
 			pointerEvents='box-none'
 		>
-			<Animated.View
-				style={[styles.wrapper, animatedStyle]}
-				onLayout={e => {
-					const { width, height } = e.nativeEvent.layout
-					if (
-						width > 0 &&
-						height > 0 &&
-						(width !== cardSize.width || height !== cardSize.height)
-					) {
-						setCardSize({ width, height })
-					}
-				}}
-			>
-				{/* Pan only on handle so Keep/Exit Pressables receive touches in build */}
-				<GestureDetector gesture={panGesture}>
-					<View style={styles.dragHandle} />
-				</GestureDetector>
-				<View style={styles.container}>
-					<Pressable
-						style={({ pressed }) => [
-							styles.button,
-							pressed && styles.buttonPressed,
-						]}
-						onPress={onKeep}
-						android_ripple={null}
-					>
-						<View style={styles.iconCircle}>
-							<ChatKeepIcon />
-						</View>
-						<Text style={styles.label}>Keep</Text>
-					</Pressable>
-					<Pressable
-						style={({ pressed }) => [
-							styles.button,
-							pressed && styles.buttonPressed,
-						]}
-						onPress={onExit}
-						android_ripple={null}
-					>
-						<View style={styles.iconCircle}>
-							<Ionicons name='power-outline' size={30} color='#FFF' />
-						</View>
-						<Text style={styles.label}>Exit</Text>
-					</Pressable>
-				</View>
-			</Animated.View>
+			<GestureDetector gesture={panGesture}>
+				<Animated.View
+					style={[styles.wrapper, animatedStyle]}
+					onLayout={e => {
+						const { width, height } = e.nativeEvent.layout
+						if (
+							width > 0 &&
+							height > 0 &&
+							(width !== cardSize.width || height !== cardSize.height)
+						) {
+							setCardSize({ width, height })
+						}
+					}}
+				>
+					<View style={styles.container}>
+						<Pressable
+							style={({ pressed }) => [
+								styles.button,
+								pressed && styles.buttonPressed,
+							]}
+							onPress={onKeep}
+							android_ripple={null}
+						>
+							<View style={styles.iconCircle}>
+								<ChatKeepIcon />
+							</View>
+							<Text style={styles.label}>Keep</Text>
+						</Pressable>
+						<Pressable
+							style={({ pressed }) => [
+								styles.button,
+								pressed && styles.buttonPressed,
+							]}
+							onPress={onExit}
+							android_ripple={null}
+						>
+							<View style={styles.iconCircle}>
+								<Ionicons name='power-outline' size={30} color='#FFF' />
+							</View>
+							<Text style={styles.label}>Exit</Text>
+						</Pressable>
+					</View>
+				</Animated.View>
+			</GestureDetector>
 		</View>
 	)
 }
@@ -170,14 +164,6 @@ const styles = StyleSheet.create({
 		top: 0,
 		width: SCREEN_WIDTH * 0.9,
 		paddingHorizontal: 10,
-	},
-	dragHandle: {
-		position: 'absolute',
-		top: 0,
-		left: 0,
-		right: 0,
-		height: 24,
-		zIndex: 1,
 	},
 	container: {
 		width: '100%',

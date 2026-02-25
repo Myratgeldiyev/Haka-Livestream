@@ -14,6 +14,8 @@ import {
 	KickOutResponse,
 	LeaveSeatRequest,
 	MuteUnmuteUserRequest,
+	RandomPkRequest,
+	RandomPkResponse,
 	RemoveAdminRequest,
 	RemoveUserResponse,
 	RoomFollowerItem,
@@ -242,6 +244,15 @@ export const roomsApi = {
 
 	startPk: async (payload: StartPkPayload): Promise<StartPkResponse> => {
 		const res = await apiClient.post('voice/battles/', payload)
+		return res.data
+	},
+
+	startRandomPk: async (
+		payload: RandomPkRequest,
+	): Promise<RandomPkResponse> => {
+		const res = await apiClient.post(ENDPOINTS.ROOMS.RANDOM_PK, {
+			room_id: payload.room_id,
+		})
 		return res.data
 	},
 

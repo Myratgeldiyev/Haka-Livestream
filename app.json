@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/images/Splash.png",
       "resizeMode": "cover",
-      "backgroundColor": "#E6F4FE"
+      "backgroundColor": "#FFFFFF"
     },
     "ios": {
       "supportsTablet": true,
@@ -48,7 +48,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#E6F4FE",
+          "backgroundColor": "#FFFFFF",
           "image": "./assets/images/Splash.png",
           "imageWidth": 280
         }
@@ -60,11 +60,11 @@
     },
     "extra": {
       "router": {},
+      "API_URL": "https://wiselabyrinth.pythonanywhere.com/api",
       "eas": {
-        "projectId": "cb311aad-2acf-4084-9c55-5c4bf40ab80f"
-      },
-      "API_URL": "https://wiselabyrinth.pythonanywhere.com/api"
+        "projectId": "f0e2adf4-870c-448c-85d3-fd362201a780"
+      }
     },
-    "owner": "haka-team"
+    "owner": "yunusmyrat"
   }
 }

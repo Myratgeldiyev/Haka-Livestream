@@ -202,6 +202,24 @@ export interface StartPkResponse {
 	status: string
 }
 
+export interface RandomPkRequest {
+	room_id: string
+}
+
+export interface RandomPkResponse {
+	room1_id: string
+	room2_id: string
+	start_time: string
+	end_time: string
+	room1: string
+	room2: string
+	id: number
+	room1_score: number
+	room2_score: number
+	is_active: boolean
+	created_at: string
+}
+
 export interface MuteUnmuteUserRequest {
 	user_id: string
 }

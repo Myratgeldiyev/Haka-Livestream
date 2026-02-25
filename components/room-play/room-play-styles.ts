@@ -7,7 +7,13 @@ export const ANIMATION_DURATION = 300
 export const STATUSBAR_HEIGHT =
 	Platform.OS === 'ios' ? 50 : (StatusBar.currentHeight ?? 24) + 10
 
-export const OVERLAY_HEIGHT = SCREEN_HEIGHT * 0.72
+const SMALL_SCREEN_HEIGHT = 700
+const LARGE_SCREEN_MAX_HEIGHT = 520
+
+export const OVERLAY_HEIGHT =
+	SCREEN_HEIGHT <= SMALL_SCREEN_HEIGHT
+		? SCREEN_HEIGHT * 0.68
+		: Math.min(SCREEN_HEIGHT * 0.56, LARGE_SCREEN_MAX_HEIGHT)
 
 export const COLORS = {
 	background: '#252038',
@@ -53,7 +59,6 @@ export const GRID_CELL_SIZE =
 const ICON_SCALE = 0.68
 export const ROOM_PLAY_ICON_SIZE = GRID_CELL_SIZE * ICON_SCALE
 
-/** Responsive grid sizes from screen width (use with useWindowDimensions). Icon scale 0.78 for slightly larger tools. */
 export function getGridSizes(width: number) {
 	const horizontalPadding = width * 0.04
 	const itemGap = width * 0.03

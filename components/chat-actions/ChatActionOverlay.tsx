@@ -23,6 +23,7 @@ export function ChatActionOverlay({
 	visible,
 	onClose,
 	user,
+	canModerateActions,
 	onFollow,
 	onUnfollow,
 	onChat,
@@ -69,8 +70,9 @@ export function ChatActionOverlay({
 	}, [animateClose, onClose, resetToMainView])
 
 	const handleKickOutPress = useCallback(() => {
+		if (!canModerateActions) return
 		setCurrentView('kick-out')
-	}, [])
+	}, [canModerateActions])
 
 	const handleKickOut = useCallback(
 		(reason: KickOutReason) => {
@@ -177,6 +179,7 @@ export function ChatActionOverlay({
 							<ChatActionContent
 								user={user}
 								level={level}
+								canModerateActions={canModerateActions}
 								onKickOutPress={handleKickOutPress}
 								onFollow={handleFollow}
 								onUnfollow={handleUnfollow}

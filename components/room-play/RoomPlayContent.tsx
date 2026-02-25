@@ -196,16 +196,14 @@ export function RoomPlayContent({
 	}
 	const gridGapStyle = { gap: screenWidth * 0.04 }
 
-	const chatIsMuted = useLiveChatStore(s => s.isMuted)
-	const streamMuted = useLiveStreamStore(s => s.streamMuted)
-	const isMuted = streamIdForMute ? streamMuted : chatIsMuted
+	const chatPlaybackMuted = useLiveChatStore(s => s.roomPlaybackMuted)
+	const streamPlaybackMuted = useLiveStreamStore(s => s.streamPlaybackMuted)
+	const isPlaybackMuted = streamIdForMute ? streamPlaybackMuted : chatPlaybackMuted
 	const giftEffectsEnabled = useLiveChatStore(s => s.giftEffectsEnabled)
 	const callEnabled = useLiveChatStore(s => s.callEnabled)
 	const roomId = useLiveChatStore(s => s.roomId)
-	const chatMuteMyself = useLiveChatStore(s => s.muteMyself)
-	const chatUnmuteMyself = useLiveChatStore(s => s.unmuteMyself)
-	const streamMuteMyself = useLiveStreamStore(s => s.muteMyself)
-	const streamUnmuteMyself = useLiveStreamStore(s => s.unmuteMyself)
+	const setRoomPlaybackMuted = useLiveChatStore(s => s.setRoomPlaybackMuted)
+	const setStreamPlaybackMuted = useLiveStreamStore(s => s.setStreamPlaybackMuted)
 	const toggleGiftEffects = useLiveChatStore(s => s.toggleGiftEffects)
 	const toggleCall = useLiveChatStore(s => s.toggleCall)
 	const sendImageMessage = useLiveChatStore(s => s.sendImageMessage)
@@ -219,17 +217,9 @@ export function RoomPlayContent({
 	const handleItemSelect = async (item: RoomPlayItemData) => {
 		if (item.name === 'Voice On' || item.name === 'Voice Off') {
 			if (streamIdForMute) {
-				if (isMuted) {
-					await streamUnmuteMyself(streamIdForMute)
-				} else {
-					await streamMuteMyself(streamIdForMute)
-				}
+				await setStreamPlaybackMuted(!isPlaybackMuted)
 			} else if (roomId) {
-				if (isMuted) {
-					await chatUnmuteMyself(roomId)
-				} else {
-					await chatMuteMyself(roomId)
-				}
+				await setRoomPlaybackMuted(!isPlaybackMuted)
 			}
 			return
 		}
@@ -301,8 +291,8 @@ export function RoomPlayContent({
 					if (item.name !== 'Voice On') return item
 					return {
 						...item,
-						name: isMuted ? 'Voice Off' : 'Voice On',
-						toggleActive: !isMuted,
+						name: isPlaybackMuted ? 'Voice Off' : 'Voice On',
+						toggleActive: isPlaybackMuted,
 					}
 				}),
 			}

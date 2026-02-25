@@ -1,11 +1,10 @@
-import { useFocusEffect } from '@react-navigation/native'
 import { useMyProfile } from '@/hooks/profile/useMyProfile'
+import { useFocusEffect } from '@react-navigation/native'
 import { Href, router } from 'expo-router'
 import React, { useCallback } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
 
 import { MenuItem } from '@/components/profile/MenuItem'
-import { MenuVideoIcon } from '@/components/profile/MenuVideoIcon'
 import { spacing } from '@/constants/spacing'
 
 import AboutUsIcon from '../ui/icons/aboutUs'
@@ -18,7 +17,6 @@ import HelpIcon from '../ui/icons/helpIcon'
 import InviteIcon from '../ui/icons/inviteIcon'
 import LevelIcon from '../ui/icons/levelIcon'
 import LiveData from '../ui/icons/livedataIcon'
-import ActivityCenterIcon from '../ui/icons/profile/ActivityCenterIcon'
 import AgencyApplyIcon from '../ui/icons/profile/AgencyApplyIcon'
 import AgencyCenterIcon from '../ui/icons/profile/AgencyCenterIcon'
 import ApplyHostIcon from '../ui/icons/profile/ApplyHostIcon'
@@ -41,7 +39,7 @@ export function MenuGrid() {
 	useFocusEffect(
 		useCallback(() => {
 			refetch()
-		}, [refetch])
+		}, [refetch]),
 	)
 
 	const menuItems: MenuItemType[] = [
@@ -135,24 +133,24 @@ export function MenuGrid() {
 			icon: <AgencyCenterIcon />,
 			link: '/(main)/agent-dashboard' as const,
 		},
-		{
-			id: 'admin-center',
-			label: 'Admin Center',
-			icon: <ActivityCenterIcon />,
-			link: '/(main)/admin-center' as const,
-		},
+		// {
+		// 	id: 'admin-center',
+		// 	label: 'Admin Center',
+		// 	icon: <ActivityCenterIcon />,
+		// 	link: '/(main)/admin-center' as const,
+		// },
 		{
 			id: 'host-center',
 			label: 'Host Center',
 			icon: <HostCenterIcon />,
 			link: '/(main)/host/host-center' as const,
 		},
-		{
-			id: 'bd-center',
-			label: 'BD Center',
-			icon: <MenuVideoIcon source={require('@/assets/videos/bd_center.mp4')} />,
-			link: '/(main)/become-agent' as const,
-		},
+		// {
+		// 	id: 'bd-center',
+		// 	label: 'BD Center',
+		// 	icon: <MenuVideoIcon source={require('@/assets/videos/bd_center.mp4')} />,
+		// 	link: '/(main)/become-agent' as const,
+		// },
 	]
 
 	const filteredItems = menuItems

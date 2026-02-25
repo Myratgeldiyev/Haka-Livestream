@@ -57,6 +57,7 @@ export const ENDPOINTS = {
 		LEAVE_SEAT: (id: string) => `voice/rooms/${id}/leave_seat/`,
 		SET_ROOM_PASSWORD: (id: string) => `voice/rooms/${id}/set_room_password/`,
 		REMOVE_ROOM_PASSWORD: (id: string) => `voice/rooms/${id}/remove_room_password/`,
+		RANDOM_PK: 'voice/battles/random_pk/',
 	},
 	LIVE_STREAM: {
 		STREAMS: 'video/streams/',
